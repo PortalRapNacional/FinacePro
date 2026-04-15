@@ -24,12 +24,14 @@ paginate = 10
     Title = "💰 Inteligência Financeira para o seu Negócio"
     Content = "Descubra os melhores cartões, empréstimos e estratégias para alavancar seu crédito como MEI ou pessoa física."
 
-  # Configuração de SEO e Social
-  [params.socialIcons]
-    - name: email
-      url: "mailto:contato@finacepro.com"
-    - name: linkedin
-      url: "https://linkedin.com"
+    # Configuração de SEO e Social
+  [[params.socialIcons]]
+    name = "email"
+    url = "mailto:contato@finacepro.com"
+
+  [[params.socialIcons]]
+    name = "linkedin"
+    url = "https://linkedin.com"
 
 # MENU SUPERIOR (Essencial para aprovação do AdSense)
 [[menu.main]]
@@ -55,5 +57,5 @@ paginate = 10
     name = "Sobre"
     url = "/sobre"
     weight = 40
-
+    
 # CONFIGURAÇÃO DE CORES VIA CSS (Crie o arquivo assets/css/extended.css se quiser mudar)
