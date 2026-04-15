@@ -1,5 +1,59 @@
 baseURL = "https://github.io"
 languageCode = "pt-br"
-title = "Finança Pro"
+title = "FinacePro | Crédito e Finanças"
 theme = "PaperMod"
+paginate = 10
 
+[params]
+  env = "production"
+  title = "FinacePro"
+  description = "Portal especializado em crédito para MEI, cartões de alta aprovação e empréstimos."
+  author = "Redação FinacePro"
+  
+  # Cores Premium e Design
+  DefaultTheme = "light" # AdSense rende mais no fundo branco
+  disableThemeToggle = true
+  ShowReadingTime = true
+  ShowShareButtons = true
+  ShowPostNavLinks = true
+  ShowBreadCrumbs = true
+  ShowCodeCopyButtons = true
+  
+  # Layout da Home (Focado em Cliques)
+  [params.homeInfoParams]
+    Title = "💰 Inteligência Financeira para o seu Negócio"
+    Content = "Descubra os melhores cartões, empréstimos e estratégias para alavancar seu crédito como MEI ou pessoa física."
+
+  # Configuração de SEO e Social
+  [params.socialIcons]
+    - name: email
+      url: "mailto:contato@finacepro.com"
+    - name: linkedin
+      url: "https://linkedin.com"
+
+# MENU SUPERIOR (Essencial para aprovação do AdSense)
+[[menu.main]]
+    identifier = "cartoes"
+    name = "💳 Cartões"
+    url = "/categories/cartão-de-crédito"
+    weight = 10
+
+[[menu.main]]
+    identifier = "mei"
+    name = "🏢 MEI"
+    url = "/categories/mei"
+    weight = 20
+
+[[menu.main]]
+    identifier = "emprestimos"
+    name = "📈 Empréstimos"
+    url = "/categories/empréstimos"
+    weight = 30
+
+[[menu.main]]
+    identifier = "sobre"
+    name = "Sobre"
+    url = "/sobre"
+    weight = 40
+
+# CONFIGURAÇÃO DE CORES VIA CSS (Crie o arquivo assets/css/extended.css se quiser mudar)
