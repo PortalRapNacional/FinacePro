@@ -43,12 +43,14 @@ jobs:
       - name: Baixar Tema PaperMod
         run: |
           mkdir -p themes
-          git clone https://github.com themes/PaperMod
+          git clone --depth=1 https://github.com themes/PaperMod
+
 
       - name: Build Hugo
         run: |
           curl -L https://github.com | tar -xz
           ./hugo --minify
+
 
       - name: Publicar no GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
