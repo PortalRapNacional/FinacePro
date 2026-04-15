@@ -2,8 +2,13 @@ name: Auto Blog MEI
 
 on:
   schedule:
-    - cron: '0 12 * * *' # Roda todo dia ao meio-dia
-  workflow_dispatch: # Permite que você clique num botão para testar agora
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build-and-deploy:
@@ -19,31 +24,34 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Instalar dependências do Python
-        run: |
-          pip install feedparser google-generativeai
+      - name: Instalar dependências
+        run: pip install feedparser google-generativeai
 
       - name: Rodar o Robô de IA
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python automator.py
 
+      - name: Salvar Mudanças no Repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@://github.com"
+          git add .
+          git commit -m "🤖 Auto-post: Novos artigos e histórico atualizado" || echo "Sem mudanças"
+          git push
+
       - name: Baixar Tema PaperMod
         run: |
           mkdir -p themes
           git clone https://github.com themes/PaperMod
 
-      - name: Configurar Hugo
-        uses: peaceiris/actions-hugo@v3
-        with:
-          hugo-version: 'latest'
-
-      - name: Build do Site com Hugo
-        run: hugo --minify
+      - name: Build Hugo
+        run: |
+          curl -L https://github.com | tar -xz
+          ./hugo --minify
 
       - name: Publicar no GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
-
