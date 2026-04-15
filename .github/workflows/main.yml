@@ -45,13 +45,11 @@ jobs:
           mkdir -p themes
           git clone --depth=1 https://github.com themes/PaperMod
 
-
       - name: Build Hugo
         run: |
           wget https://github.com
           tar -xzf hugo_extended_0.121.1_linux-amd64.tar.gz
           ./hugo --minify
-
 
       - name: Publicar no GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
