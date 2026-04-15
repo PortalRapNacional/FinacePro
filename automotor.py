@@ -521,27 +521,12 @@ def main() -> None:
             log.info(f"⏳ Aguardando {API_DELAY_SECONDS}s (rate limit)...")
             time.sleep(API_DELAY_SECONDS)
 
-    # ── Etapa 5: Deploy no GitHub Pages ─────────────────────────
-    log.info(f"\n🚀 [ETAPA 4/4] Publicando {posts_criados} post(s) no GitHub Pages...")
-
+        # ── Etapa 5: Finalização ─────────────────────────
+    log.info(f"\n✨ [CONCLUÍDO] {posts_criados} post(s) gerado(s) localmente.")
     if posts_criados == 0:
-        log.warning("Nenhum post novo criado. Deploy cancelado.")
         sys.exit(0)
-
-    data_hoje = datetime.now().strftime("%d/%m/%Y")
-    mensagem = f"🤖 Auto-post: {posts_criados} novo(s) artigo(s) — {data_hoje}"
-
-    sucesso = fazer_deploy_git(mensagem)
-
-    log.info("\n" + "=" * 60)
-    if sucesso:
-        log.info(f"🎉 CONCLUÍDO! {posts_criados} post(s) publicado(s) com sucesso.")
-    else:
-        log.error("💥 Deploy falhou. Verifique as permissões do Git/GitHub.")
-        sys.exit(1)
-    log.info("=" * 60)
-
+    
+    log.info("O GitHub Actions cuidará da publicação agora.")
 
 if __name__ == "__main__":
     main()
-
