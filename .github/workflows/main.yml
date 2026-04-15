@@ -39,17 +39,16 @@ jobs:
           git add .
           git commit -m "🤖 Auto-post: Novos artigos e histórico atualizado" || echo "Sem mudanças"
           git push
-
           
       - name: Baixar Tema PaperMod
         run: |
           mkdir -p themes
-          THEME_URL="https://github.com"
+          THEME_URL="https://github.com
           git clone --depth=1 $THEME_URL themes/PaperMod
 
       - name: Build Hugo
         run: |
-          HUGO_URL="https://github.com"
+          HUGO_URL="https://github.com
           wget $HUGO_URL -O hugo.tar.gz
           tar -xzf hugo.tar.gz
           ./hugo --minify
