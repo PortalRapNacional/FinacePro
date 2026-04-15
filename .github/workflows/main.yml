@@ -53,7 +53,6 @@ jobs:
           tar -xzf hugo.tar.gz
           ./hugo --minify
 
-
       - name: Publicar no GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
