@@ -40,16 +40,20 @@ jobs:
           git commit -m "🤖 Auto-post: Novos artigos e histórico atualizado" || echo "Sem mudanças"
           git push
 
+          
       - name: Baixar Tema PaperMod
         run: |
           mkdir -p themes
-          git clone --depth=1 https://github.com themes/PaperMod
+          THEME_URL="https://github.com"
+          git clone --depth=1 $THEME_URL themes/PaperMod
 
       - name: Build Hugo
         run: |
-          wget https://github.com
-          tar -xzf hugo_extended_0.121.1_linux-amd64.tar.gz
+          HUGO_URL="https://github.com"
+          wget $HUGO_URL -O hugo.tar.gz
+          tar -xzf hugo.tar.gz
           ./hugo --minify
+
 
       - name: Publicar no GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
