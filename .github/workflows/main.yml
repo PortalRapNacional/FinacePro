@@ -1,0 +1,49 @@
+name: Auto Blog MEI
+
+on:
+  schedule:
+    - cron: '0 12 * * *' # Roda todo dia ao meio-dia
+  workflow_dispatch: # Permite que você clique num botão para testar agora
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependências do Python
+        run: |
+          pip install feedparser google-generativeai
+
+      - name: Rodar o Robô de IA
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python automator.py
+
+      - name: Baixar Tema PaperMod
+        run: |
+          mkdir -p themes
+          git clone https://github.com themes/PaperMod
+
+      - name: Configurar Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: 'latest'
+
+      - name: Build do Site com Hugo
+        run: hugo --minify
+
+      - name: Publicar no GitHub Pages
+        uses: peaceiris/actions-gh-pages@v6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+
