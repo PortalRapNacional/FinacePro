@@ -1,2 +1,2 @@
-feedparser
-google-generativeai
+feedparser>=6.0.10
+google-generativeai>=0.3.0
