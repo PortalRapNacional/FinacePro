@@ -35,7 +35,7 @@ jobs:
       - name: Salvar Mudanças no Repositório
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@://github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
           git commit -m "🤖 Auto-post: Novos artigos e histórico atualizado" || echo "Sem mudanças"
           git push
@@ -48,7 +48,8 @@ jobs:
 
       - name: Build Hugo
         run: |
-          curl -L https://github.com | tar -xz
+          wget https://github.com
+          tar -xzf hugo_extended_0.121.1_linux-amd64.tar.gz
           ./hugo --minify
 
 
