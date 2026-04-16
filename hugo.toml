@@ -1,68 +1,35 @@
 baseURL = "https://github.io"
 languageCode = "pt-br"
-title = "FinacePro | Crédito e Finanças"
+title = "Finanças para MEI | FinacePro"
 theme = "PaperMod"
 paginate = 10
 
+# ISSO MATA O ERRO "NOT A DIRECTORY"
 disableKinds = ["taxonomy", "term"]
 
 [params]
   env = "production"
-  title = "FinacePro"
-  description = "Portal especializado em crédito para MEI, cartões de alta aprovação e empréstimos."
-  author = "Redação FinacePro"
-  
-  # Cores Premium e Design
-  DefaultTheme = "light" # AdSense rende mais no fundo branco
-  disableThemeToggle = true
+  title = "Finanças MEI"
+  description = "Dicas sobre cartões de crédito e empréstimos para MEI."
+  author = "Blog Automator"
+  defaultTheme = "light"
   ShowReadingTime = true
-  ShowShareButtons = true
-  ShowPostNavLinks = true
   ShowBreadCrumbs = true
+  ShowPostNavLinks = true
   ShowCodeCopyButtons = true
-  
-  # Layout da Home (Focado em Cliques)
+
   [params.homeInfoParams]
-    Title = "💰 Inteligência Financeira para o seu Negócio"
-    Content = "Descubra os melhores cartões, empréstimos e estratégias para alavancar seu crédito como MEI ou pessoa física."
+    Title = "💳 Inteligência Financeira para MEI"
+    Content = "As melhores estratégias de crédito e cartões em um só lugar."
 
-    # Configuração de SEO e Social
-  [[params.socialIcons]]
-    name = "email"
-    url = "mailto:contato@finacepro.com"
-
-  [[params.socialIcons]]
-    name = "linkedin"
-    url = "https://linkedin.com"
-
-# MENU SUPERIOR (Essencial para aprovação do AdSense)
 [[menu.main]]
-    identifier = "cartoes"
-    name = "💳 Cartões"
-    url = "/categories/cartão-de-crédito"
+    identifier = "posts"
+    name = "📝 Artigos"
+    url = "/posts/"
     weight = 10
-
-[[menu.main]]
-    identifier = "mei"
-    name = "🏢 MEI"
-    url = "/categories/mei"
-    weight = 20
-
-[[menu.main]]
-    identifier = "emprestimos"
-    name = "📈 Empréstimos"
-    url = "/categories/empréstimos"
-    weight = 30
 
 [[menu.main]]
     identifier = "sobre"
     name = "Sobre"
-    url = "/sobre"
-    weight = 40
-
-[[uglyURLs]]
-  section = true
-  categories = true
-  tags = true
-
-# CONFIGURAÇÃO DE CORES VIA CSS (Crie o arquivo assets/css/extended.css se quiser mudar)
+    url = "/about"
+    weight = 20
