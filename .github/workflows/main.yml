@@ -2,7 +2,7 @@ name: 🤖 Blog Automator Full
 
 on:
   schedule:
-    - cron: "0 12 * * *"
+    - cron: '0 0,12 * * *'
   workflow_dispatch:
 
 permissions:
@@ -10,8 +10,13 @@ permissions:
   pages: write
   id-token: write
 
+# Impede que múltiplos deploys rodem ao mesmo tempo
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
-  automacao:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
@@ -35,8 +40,8 @@ jobs:
 
       - name: 💾 Salvar Post no Repo
         run: |
-          git config --global user.name "Blog Automator Bot"
-          git config --global user.email "bot@blog-automator.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@://github.com"
           git add .
           git diff --quiet && git diff --staged --quiet || (git commit -m "📝 Novo post automático" && git push)
 
@@ -48,14 +53,20 @@ jobs:
 
       - name: 🔨 Build Hugo
         run: |
-          rm -rf public
-          hugo --minify --gc --baseURL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          hugo --minify --gc
 
-      - name: 📤 Upload e Deploy
+      - name: 📤 Upload Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: 🌐 Finalizar Deploy
+        id: deployment
         uses: actions/deploy-pages@v4
-        
