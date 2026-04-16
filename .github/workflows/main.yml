@@ -101,23 +101,25 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
-    steps:
+     steps:
       # 1️⃣ Checkout com o conteúdo já atualizado pelo job anterior
       - name: 📥 Checkout do Repositório (atualizado)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Instala Hugo Extended (necessário para temas modernos)
+      # 2️⃣ Instala Hugo Extended
       - name: 🏗️ Instalar Hugo Extended
         uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: "latest"
-          extended: true  # Suporte a SCSS/Sass
+          extended: true
 
-      # 3️⃣ Atualiza submódulos (necessário se o tema for um submódulo Git)
-      - name: 🔄 Atualizar Submódulos (Temas)
-        run: git submodule update --init --recursive
+      # 3️⃣ SOLUÇÃO DO ERRO: Baixa o tema PaperMod manualmente
+      - name: 📥 Baixar Tema PaperMod
+        run: |
+          mkdir -p themes/PaperMod
+          curl -L https://github.com | tar -xz -C themes/PaperMod --strip-components=1
 
       # 4️⃣ Build do site Hugo
       - name: 🔨 Build do Site Hugo
@@ -126,8 +128,6 @@ jobs:
             --minify \
             --gc \
             --baseURL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
-        # --minify: Comprime HTML/CSS/JS
-        # --gc: Remove cache antigo
 
       # 5️⃣ Configura o GitHub Pages
       - name: ⚙️ Configurar GitHub Pages
@@ -137,7 +137,7 @@ jobs:
       - name: 📤 Upload dos Arquivos do Site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "./public"  # Hugo gera o site estático aqui
+          path: "./public"
 
       # 7️⃣ Deploy no GitHub Pages
       - name: 🌐 Deploy no GitHub Pages
