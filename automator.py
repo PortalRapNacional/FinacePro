@@ -15,6 +15,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
 import feedparser
 import google.generativeai as genai
 
@@ -114,23 +115,12 @@ def filtrar_novas(noticias: list[dict], historico: set[str]) -> list[dict]:
 # MÓDULO 3 — IA GEMINI
 # ═══════════════════════════════════════════════════════════════
 
-def configurar_gemini() -> Optional[genai.GenerativeModel]:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        log.critical("🚨 GEMINI_API_KEY não encontrada nas variáveis de ambiente!")
-        return None
+def gerar_artigo(client, titulo, fonte):
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-pro")
-        log.info("🤖 Gemini configurado.")
-        return model
-    except Exception as e:
-        log.error(f"❌ Falha ao configurar Gemini: {e}")
-        return None
-
-
-def gerar_artigo(model: genai.GenerativeModel, titulo: str, fonte: str) -> Optional[str]:
-    prompt = """Aja como especialista em finanças para MEI e empreendedores brasileiros.
+        # Aqui usamos o modelo mais rápido e moderno (2.0-flash)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=f""""Aja como especialista em finanças para MEI e empreendedores brasileiros.
 
 Com base na notícia: "{titulo}" (fonte: {fonte})
 
@@ -175,15 +165,11 @@ REGRAS:
 - Mencione a keyword principal 3-5x naturalmente
 - NÃO inclua texto fora da estrutura (sem "Claro!", sem introduções)
 - Entre 800 e 1200 palavras
-"""
-    try:
-        log.info(f"🧠 Gerando artigo: '{titulo[:60]}...'")
-        resp = model.generate_content(prompt)
-        conteudo = resp.text.strip()
-        log.info(f"✅ Artigo gerado ({len(conteudo)} chars)")
-        return conteudo
+"""    
+)
+        return response.text
     except Exception as e:
-        log.error(f"❌ Erro na API Gemini: {e}")
+        logging.error(f"❌ Erro na geração de conteúdo: {e}")
         return None
 
 

@@ -30,7 +30,7 @@ jobs:
           python-version: "3.11"
 
       - name: 📦 Instalar Dependências
-        run: pip install -U feedparser google-generativeai
+        run: pip install -U feedparser google-genai
 
       - name: 🚀 Gerar Post com IA
         env:
