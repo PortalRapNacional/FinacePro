@@ -1,125 +1,69 @@
-# ╔══════════════════════════════════════════════════════════════╗
-# ║         GitHub Actions — Blog Automator CI/CD               ║
-# ║   Roda todo dia às 09h (horário de Brasília = 12h UTC)      ║
-# ╚══════════════════════════════════════════════════════════════╝
-
-name: 🤖 Blog Automator — Post Diário
+name: 🤖 Blog Automator Full
 
 on:
-  # ──────────────────────────────────────────────────────────────
-  # Agenda: todo dia às 12:00 UTC = 09:00 BRT (Brasília)
-  # Formato cron: minuto hora dia mês dia-semana
-  # ──────────────────────────────────────────────────────────────
   schedule:
-    - cron: "0 12 * * *"
+    - cron: "0 12 * * *" # Roda todo dia ao meio-dia
+  workflow_dispatch: # Permite que você rode manualmente pelo botão "Run workflow"
 
-  # Permite rodar manualmente pela aba "Actions" do GitHub
-  workflow_dispatch:
-    inputs:
-      debug_mode:
-        description: "Ativar modo debug (mais logs)"
-        required: false
-        default: "false"
-        type: choice
-        options:
-          - "true"
-          - "false"
-
-# Permissões necessárias para o Actions escrever no repositório
 permissions:
   contents: write
   pages: write
   id-token: write
 
 jobs:
-  # ─────────────────────────────────────────────────────────────
-  # JOB 1: Gerar e publicar novos posts
-  # ─────────────────────────────────────────────────────────────
-  gerar-posts:
-    name: 📝 Gerar Posts com IA
+  automacao-completa:
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # Evita jobs travados consumindo minutos
-
     steps:
-      # 1️⃣ Checkout do repositório (necessário para ler/escrever arquivos)
-      - name: 📥 Checkout do Repositório
+      - name: 📥 Checkout
         uses: actions/checkout@v4
         with:
-          # Token com permissão de push (usa o GITHUB_TOKEN padrão)
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # Busca TODO o histórico para evitar problemas no git push
           fetch-depth: 0
+          submodules: recursive
 
-      # 2️⃣ Configura Python 3.11
-      - name: 🐍 Configurar Python 3.11
+      - name: 🐍 Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          # Cache de dependências para acelerar execuções futuras
-          cache: "pip"
 
-      # 3️⃣ Instala as dependências do projeto
       - name: 📦 Instalar Dependências
         run: |
-          python -m pip install --upgrade pip
           pip install feedparser google-generativeai
 
-      # 4️⃣ Executa o script de automação
-      #    A GEMINI_API_KEY vem dos Secrets do repositório
-      - name: 🚀 Executar Blog Automator
+      - name: 🚀 Gerar Post com IA
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Configuração do Git para o push automático
-          GIT_AUTHOR_NAME: "Blog Automator Bot"
-          GIT_AUTHOR_EMAIL: "bot@blog-automator.com"
-          GIT_COMMITTER_NAME: "Blog Automator Bot"
-          GIT_COMMITTER_EMAIL: "bot@blog-automator.com"
+        run: python automator.py
+
+      - name: 💾 Salvar Post no Repo
         run: |
-          python automator.py
+          git config --global user.name "Blog Automator Bot"
+          git config --global user.email "bot@blog-automator.com"
+          git add .
+          # Só faz commit se houver novos arquivos (posts)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "📝 Novo post automático" && git push)
 
-      # 5️⃣ Upload do histórico como artefato (backup)
-      - name: 📂 Salvar Histórico como Artefato
-        uses: actions/upload-artifact@v4
-        if: always()  # Roda mesmo se o job falhar
-        with:
-          name: historico-posts-${{ github.run_id }}
-          path: historico.txt
-          retention-days: 30  # Mantém por 30 dias
-
-  # ─────────────────────────────────────────────────────────────
-  # JOB 2: Build e Deploy do Hugo no GitHub Pages
-  # Roda APÓS o Job 1 ter concluído com sucesso
-  # ─────────────────────────────────────────────────────────────
-  deploy-hugo:
-    name: 🌐 Build e Deploy Hugo
-    runs-on: ubuntu-latest
-    needs: gerar-posts  # Depende do job anterior
-    timeout-minutes: 10
-
-    # Configuração do ambiente de deploy do GitHub Pages
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-      
-     steps:
-      - name: 📥 Checkout do Repositório
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: 🏗️ Instalar Hugo Extended
+      - name: 🏗️ Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: "latest"
           extended: true
 
-      - name: 📥 Baixar Tema PaperMod
+      - name: 🔨 Build Hugo
         run: |
-          mkdir -p themes/PaperMod
-          curl -L https://github.com | tar -xz -C themes/PaperMod --strip-components=1
-          # Verifica se os arquivos do tema estão lá (ajuda no debug)
-          ls -R themes/PaperMod
+          hugo --minify --gc --baseURL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+        
+      - name: 📤 Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./public"
 
-      - name: 🔨 Build do Site Hugo
-        run: |
-          hugo --minify --gc --themesDir themes/
+  deploy:
+    needs: automacao-completa
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 🌐 Finalizar Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
