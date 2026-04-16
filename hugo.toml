@@ -1,35 +1,58 @@
 baseURL = "https://github.io"
 languageCode = "pt-br"
-title = "Finanças para MEI | FinacePro"
+title = "FinacePro | Inteligência Financeira"
 theme = "PaperMod"
 paginate = 10
 
-# ISSO MATA O ERRO "NOT A DIRECTORY"
+# Mantendo a correção de diretório
 disableKinds = ["taxonomy", "term"]
 
 [params]
   env = "production"
-  title = "Finanças MEI"
-  description = "Dicas sobre cartões de crédito e empréstimos para MEI."
-  author = "Blog Automator"
+  title = "FinacePro"
+  description = "Portal especializado em crédito MEI e cartões de alta aprovação."
+  author = "Redação FinacePro"
+  
+  # Design Premium
   defaultTheme = "light"
+  disableThemeToggle = false # Permite que o usuário escolha Dark Mode (mais moderno)
   ShowReadingTime = true
-  ShowBreadCrumbs = true
-  ShowPostNavLinks = true
+  ShowShareButtons = true
   ShowCodeCopyButtons = true
+  ShowBreadCrumbs = true
+  
+  # Barra de Busca (Fundamental para Portais)
+  fuseOpts = { isCaseSensitive = false, shouldSort = true, location = 0, distance = 100, threshold = 0.4, minMatchCharLength = 0, keys = ["title", "permalink", "summary", "content"] }
 
+  # Estilo da Home (Perfil Profissional)
   [params.homeInfoParams]
-    Title = "💳 Inteligência Financeira para MEI"
-    Content = "As melhores estratégias de crédito e cartões em um só lugar."
+    Title = "💰 Inteligência Financeira para o seu Negócio"
+    Content = "Descubra os melhores cartões, empréstimos e estratégias para alavancar seu crédito como MEI ou pessoa física."
 
+  # Ícones Sociais (Dão credibilidade)
+  [[params.socialIcons]]
+    name = "github"
+    url = "https://github.com"
+  [[params.socialIcons]]
+    name = "linkedin"
+    url = "https://linkedin.com"
+  [[params.socialIcons]]
+    name = "email"
+    url = "mailto:contato@finacepro.com"
+
+# Menu Organizado
 [[menu.main]]
-    identifier = "posts"
+    identifier = "artigos"
     name = "📝 Artigos"
-    url = "/posts/"
+    url = "/posts"
     weight = 10
-
 [[menu.main]]
     identifier = "sobre"
     name = "Sobre"
     url = "/about"
     weight = 20
+[[menu.main]]
+    identifier = "privacidade"
+    name = "Privacidade"
+    url = "/privacidade"
+    weight = 30

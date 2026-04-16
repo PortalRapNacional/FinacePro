@@ -1,0 +1,29 @@
+/* Fonte mais moderna para Finanças */
+:root {
+    --theme: #2c3e50;
+    /* Azul Marinho Profissional */
+    --primary: #1a1a1a;
+}
+
+body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    letter-spacing: -0.01em;
+}
+
+.main {
+    max-width: 900px;
+    /* Layout mais focado */
+}
+
+/* Deixa os cards de post mais elegantes */
+.post-entry {
+    background: #ffffff;
+    border: 1px solid #eaeaea;
+    transition: transform 0.2s;
+    border-radius: 8px;
+}
+
+.post-entry:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
