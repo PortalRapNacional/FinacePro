@@ -121,7 +121,7 @@ def configurar_gemini() -> Optional[genai.GenerativeModel]:
         return None
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-pro")
         log.info("🤖 Gemini configurado.")
         return model
     except Exception as e:
@@ -130,7 +130,7 @@ def configurar_gemini() -> Optional[genai.GenerativeModel]:
 
 
 def gerar_artigo(model: genai.GenerativeModel, titulo: str, fonte: str) -> Optional[str]:
-    prompt = f"""Aja como especialista em finanças para MEI e empreendedores brasileiros.
+    prompt = """Aja como especialista em finanças para MEI e empreendedores brasileiros.
 
 Com base na notícia: "{titulo}" (fonte: {fonte})
 

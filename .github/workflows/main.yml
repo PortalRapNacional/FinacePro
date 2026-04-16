@@ -2,21 +2,17 @@ name: 🤖 Blog Automator Full
 
 on:
   schedule:
+    # 12:00 e 00:00 UTC equivalem a 09:00 e 21:00 no Brasil (GMT-3)
     - cron: '0 0,12 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Permite que você rode manualmente se quiser testar
 
 permissions:
   contents: write
   pages: write
   id-token: write
 
-# Impede que múltiplos deploys rodem ao mesmo tempo
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
-
 jobs:
-  build:
+  automacao:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
@@ -31,7 +27,7 @@ jobs:
           python-version: "3.11"
 
       - name: 📦 Instalar Dependências
-        run: pip install feedparser google-generativeai
+        run: pip install -U google-generativeai feedparser
 
       - name: 🚀 Gerar Post com IA
         env:
@@ -40,8 +36,8 @@ jobs:
 
       - name: 💾 Salvar Post no Repo
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@://github.com"
+          git config --global user.name "Blog Automator Bot"
+          git config --global user.email "bot@blog-automator.com"
           git add .
           git diff --quiet && git diff --staged --quiet || (git commit -m "📝 Novo post automático" && git push)
 
@@ -53,20 +49,14 @@ jobs:
 
       - name: 🔨 Build Hugo
         run: |
-          hugo --minify --gc
+          rm -rf public
+          hugo --minify --gc --baseURL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
 
-      - name: 📤 Upload Artifact
+      - name: 📤 Upload e Deploy
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - name: 🌐 Finalizar Deploy
-        id: deployment
         uses: actions/deploy-pages@v4
+        
