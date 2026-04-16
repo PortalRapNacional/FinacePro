@@ -2,8 +2,8 @@ name: 🤖 Blog Automator Full
 
 on:
   schedule:
-    - cron: "0 12 * * *" # Roda todo dia ao meio-dia
-  workflow_dispatch: # Permite que você rode manualmente pelo botão "Run workflow"
+    - cron: "0 12 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 jobs:
-  automacao-completa:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
@@ -26,8 +26,7 @@ jobs:
           python-version: "3.11"
 
       - name: 📦 Instalar Dependências
-        run: |
-          pip install feedparser google-generativeai
+        run: pip install feedparser google-generativeai
 
       - name: 🚀 Gerar Post com IA
         env:
@@ -39,7 +38,6 @@ jobs:
           git config --global user.name "Blog Automator Bot"
           git config --global user.email "bot@blog-automator.com"
           git add .
-          # Só faz commit se houver novos arquivos (posts)
           git diff --quiet && git diff --staged --quiet || (git commit -m "📝 Novo post automático" && git push)
 
       - name: 🏗️ Setup Hugo
@@ -53,18 +51,11 @@ jobs:
           rm -rf public
           hugo --minify --gc --baseURL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
 
-      - name: 📤 Upload Artifact
+      - name: 📤 Upload para o Pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "./public"
+          path: ./public
 
-  deploy:
-    needs: automacao-completa
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: 🌐 Finalizar Deploy
+      - name: 🌐 Deploy Final
         id: deployment
         uses: actions/deploy-pages@v4
