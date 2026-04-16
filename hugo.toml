@@ -25,6 +25,13 @@ disableKinds = ["taxonomy", "term"]
     Title = "💰 Inteligência Financeira e Crédito para MEI"
     Content = "As melhores análises de cartões, crédito empresarial e dicas para organizar as finanças do seu negócio."
 
+[build]
+  publishResources = true
+  renderDrafts = true
+  renderFuture = true
+  renderExpired = true
+
+
   # SEO e Social
   [[params.socialIcons]]
     name = "email"
