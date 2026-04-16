@@ -1,58 +1,49 @@
 baseURL = "https://github.io"
 languageCode = "pt-br"
-title = "FinacePro | Inteligência Financeira"
+title = "FinacePro | Crédito, MEI e Soluções Financeiras"
 theme = "PaperMod"
-paginate = 10
+paginate = 12
 
-# Mantendo a correção de diretório
 disableKinds = ["taxonomy", "term"]
 
 [params]
   env = "production"
   title = "FinacePro"
-  description = "Portal especializado em crédito MEI e cartões de alta aprovação."
+  description = "Guia completo sobre cartões de crédito para MEI, empréstimos e educação financeira."
   author = "Redação FinacePro"
   
-  # Design Premium
+  # Essencial para AdSense: Fundo claro e leitura fácil
   defaultTheme = "light"
-  disableThemeToggle = false # Permite que o usuário escolha Dark Mode (mais moderno)
+  disableThemeToggle = true # Mantém o site sempre claro (melhor para anúncios)
   ShowReadingTime = true
-  ShowShareButtons = true
-  ShowCodeCopyButtons = true
   ShowBreadCrumbs = true
+  ShowPostNavLinks = true
+  ShowCodeCopyButtons = true
   
-  # Barra de Busca (Fundamental para Portais)
-  fuseOpts = { isCaseSensitive = false, shouldSort = true, location = 0, distance = 100, threshold = 0.4, minMatchCharLength = 0, keys = ["title", "permalink", "summary", "content"] }
-
-  # Estilo da Home (Perfil Profissional)
+  # Layout de Portal de Notícias
   [params.homeInfoParams]
-    Title = "💰 Inteligência Financeira para o seu Negócio"
-    Content = "Descubra os melhores cartões, empréstimos e estratégias para alavancar seu crédito como MEI ou pessoa física."
+    Title = "💰 Inteligência Financeira e Crédito para MEI"
+    Content = "As melhores análises de cartões, crédito empresarial e dicas para organizar as finanças do seu negócio."
 
-  # Ícones Sociais (Dão credibilidade)
-  [[params.socialIcons]]
-    name = "github"
-    url = "https://github.com"
-  [[params.socialIcons]]
-    name = "linkedin"
-    url = "https://linkedin.com"
+  # SEO e Social
   [[params.socialIcons]]
     name = "email"
     url = "mailto:contato@finacepro.com"
 
-# Menu Organizado
+# Menu focado nos nichos de alto valor (High CPM)
 [[menu.main]]
-    identifier = "artigos"
-    name = "📝 Artigos"
-    url = "/posts"
+    name = "💳 Cartões"
+    url = "/posts/"
     weight = 10
 [[menu.main]]
-    identifier = "sobre"
-    name = "Sobre"
-    url = "/about"
+    name = "🏢 MEI"
+    url = "/posts/"
     weight = 20
 [[menu.main]]
-    identifier = "privacidade"
-    name = "Privacidade"
-    url = "/privacidade"
+    name = "📈 Empréstimos"
+    url = "/posts/"
     weight = 30
+[[menu.main]]
+    name = "Sobre"
+    url = "/about"
+    weight = 40

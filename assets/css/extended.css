@@ -1,29 +1,38 @@
-/* Fonte mais moderna para Finanças */
+/* Cores que passam autoridade (Azul e Cinza) */
 :root {
-    --theme: #2c3e50;
+    --theme: #121e31;
     /* Azul Marinho Profissional */
-    --primary: #1a1a1a;
+    --primary: #1d1d1f;
+    --content: #333333;
+    --entry: #ffffff;
 }
 
+/* Tipografia de Site de Notícias (Inter ou Segoe) */
 body {
-    font-family: 'Inter', -apple-system, sans-serif;
-    letter-spacing: -0.01em;
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    line-height: 1.6;
 }
 
+/* Espaçamento para anúncios (AdSense Ad Slots) */
 .main {
-    max-width: 900px;
-    /* Layout mais focado */
+    max-width: 800px;
+    /* Largura ideal para leitura */
 }
 
-/* Deixa os cards de post mais elegantes */
+/* Cards de posts elegantes */
 .post-entry {
-    background: #ffffff;
-    border: 1px solid #eaeaea;
-    transition: transform 0.2s;
-    border-radius: 8px;
+    border: 1px solid #f0f0f0;
+    border-radius: 10px;
+    padding: 25px !important;
+    transition: box-shadow 0.3s ease;
 }
 
 .post-entry:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Estilo do Título (Importante para o AdSense ler o contexto) */
+.first-entry .entry-header h1 {
+    font-size: 34px;
+    color: var(--theme);
 }
