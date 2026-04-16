@@ -31,9 +31,8 @@ jobs:
 
       - name: 📦 Instalar Dependências
         run: |
-             python -m pip install --upgrade pip
-             pip install -r requirements.txt
-
+          python -m pip install --upgrade pip
+          pip install google-generativeai feedparser
 
       - name: 🚀 Gerar Post com IA
         env:
