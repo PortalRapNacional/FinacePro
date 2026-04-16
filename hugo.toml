@@ -4,6 +4,8 @@ title = "FinacePro | Crédito e Finanças"
 theme = "PaperMod"
 paginate = 10
 
+disableKinds = ["taxonomy", "term"]
+
 [params]
   env = "production"
   title = "FinacePro"
@@ -57,5 +59,10 @@ paginate = 10
     name = "Sobre"
     url = "/sobre"
     weight = 40
-    
+
+[[uglyURLs]]
+  section = true
+  categories = true
+  tags = true
+
 # CONFIGURAÇÃO DE CORES VIA CSS (Crie o arquivo assets/css/extended.css se quiser mudar)
