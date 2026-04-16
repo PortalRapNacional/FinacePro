@@ -100,46 +100,26 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
+      
      steps:
-      # 1️⃣ Checkout com o conteúdo já atualizado pelo job anterior
-      - name: 📥 Checkout do Repositório (atualizado)
+      - name: 📥 Checkout do Repositório
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Instala Hugo Extended
       - name: 🏗️ Instalar Hugo Extended
         uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: "latest"
           extended: true
 
-      # 3️⃣ SOLUÇÃO DO ERRO: Baixa o tema PaperMod manualmente
       - name: 📥 Baixar Tema PaperMod
         run: |
           mkdir -p themes/PaperMod
           curl -L https://github.com | tar -xz -C themes/PaperMod --strip-components=1
+          # Verifica se os arquivos do tema estão lá (ajuda no debug)
+          ls -R themes/PaperMod
 
-      # 4️⃣ Build do site Hugo
       - name: 🔨 Build do Site Hugo
         run: |
-          hugo \
-            --minify \
-            --gc \
-            --baseURL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
-
-      # 5️⃣ Configura o GitHub Pages
-      - name: ⚙️ Configurar GitHub Pages
-        uses: actions/configure-pages@v4
-
-      # 6️⃣ Upload dos arquivos gerados
-      - name: 📤 Upload dos Arquivos do Site
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "./public"
-
-      # 7️⃣ Deploy no GitHub Pages
-      - name: 🌐 Deploy no GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          hugo --minify --gc --themesDir themes/
