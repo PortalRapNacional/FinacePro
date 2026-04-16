@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 jobs:
-  build-and-deploy:
+  automacao:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
@@ -51,11 +51,11 @@ jobs:
           rm -rf public
           hugo --minify --gc --baseURL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
 
-      - name: 📤 Upload para o Pages
+      - name: 📤 Upload e Deploy
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
-      - name: 🌐 Deploy Final
-        id: deployment
+      - name: 🌐 Finalizar Deploy
         uses: actions/deploy-pages@v4
+        
