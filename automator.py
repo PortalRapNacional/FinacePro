@@ -17,7 +17,21 @@ from pathlib import Path
 from typing import Optional
 
 import feedparser
-import google.generativeai as genai
+from google import genai  # <--- Use esta que é a versão moderna
+
+
+# Adicionado 
+
+def configurar_gemini():
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("❌ ERRO: GEMINI_API_KEY não encontrada!")
+        sys.exit(1)
+    
+    # Cria o cliente para o Gemini 2.0 Flash
+    client = genai.Client(api_key=api_key)
+    return client
+
 
 # ─────────────────────────────────────────────
 # LOGGING
