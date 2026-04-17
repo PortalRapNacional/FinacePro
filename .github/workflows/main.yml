@@ -31,12 +31,13 @@ jobs:
 
       - name: 📦 Instalar Dependências
         run: |
-            python -m pip install --upgrade pip
-            pip install google-genai feedparser
+          python -m pip install --upgrade pip
+          pip install google-genai feedparser
 
       - name: 🚀 Gerar Post com IA
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}   # ← NOVO: busca de imagens
         run: python automator.py
 
       - name: 💾 Salvar Post no Repo
