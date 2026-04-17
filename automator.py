@@ -131,10 +131,9 @@ def filtrar_novas(noticias: list[dict], historico: set[str]) -> list[dict]:
 
 def gerar_artigo(client, titulo, fonte):
     try:
-        # Aqui usamos o modelo mais rápido e moderno (2.0-flash)
         response = client.models.generate_content(
             model='gemini-2.0-flash',
-            contents=f""""Aja como especialista em finanças para MEI e empreendedores brasileiros.
+            contents=f"Aja como especialista em finanças para MEI e empreendedores brasileiros.
 
 Com base na notícia: "{titulo}" (fonte: {fonte})
 
@@ -180,12 +179,11 @@ REGRAS:
 - NÃO inclua texto fora da estrutura (sem "Claro!", sem introduções)
 - Entre 800 e 1200 palavras
 """    
-)
+        )
         return response.text
     except Exception as e:
-        logging.error(f"❌ Erro na geração de conteúdo: {e}")
+        print(f"Erro na IA: {e}")
         return None
-
 
 # ═══════════════════════════════════════════════════════════════
 # MÓDULO 4 — ESTRUTURADOR HUGO
