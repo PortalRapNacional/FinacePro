@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║         BLOG AUTOMATOR v2 — Cartões de Crédito & MEI            ║
-║   Stack: Hugo + GitHub Pages + Gemini AI + GitHub Actions        ║
+║         BLOG AUTOMATOR v3 — Cartões de Crédito & MEI            ║
+║   Stack: Hugo + GitHub Pages + Gemini AI + Pexels + Actions     ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
 
@@ -11,6 +11,9 @@ import sys
 import time
 import hashlib
 import logging
+import urllib.request
+import urllib.parse
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -51,12 +54,25 @@ CONTENT_DIR    = Path("content/posts")
 HISTORICO_FILE = Path("historico.txt")
 MAX_POSTS      = 3
 
-# ── MELHORIA: delay mais conservador para evitar esgotar RPM ──
-API_DELAY      = 30   # era 8s; aumentado para respeitar rate limits
+# ── Delays e Rate Limits ──
+API_DELAY      = 30   # segundos entre chamadas Gemini
+PEXELS_DELAY   = 2    # segundos após busca de imagem (antes do Gemini)
 
-# ── MELHORIA: modelo alternativo com cota separada do 2.0-flash ──
-GEMINI_MODEL         = "gemini-1.5-flash"
-GEMINI_MAX_TENTATIVAS = 3   # tentativas com backoff em caso de 429
+# ── Modelos ──
+GEMINI_MODEL          = "gemini-1.5-flash"
+GEMINI_MAX_TENTATIVAS = 3
+
+# ── Mapeamento de categorias → termos de busca em inglês (Pexels) ──
+PEXELS_QUERY_MAP = {
+    "Cartão de Crédito": "credit card finance business",
+    "MEI":               "small business entrepreneur brazil",
+    "Empréstimos":       "bank loan money business",
+    "Finanças":          "personal finance money investment",
+}
+
+# ── Imagem de fallback (usada se Pexels falhar ou key ausente) ──
+PEXELS_FALLBACK_IMAGE = "https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg"
+PEXELS_FALLBACK_ALT   = "Finanças e crédito para empreendedores"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -117,7 +133,52 @@ def filtrar_novas(noticias: list, historico: set) -> list:
 
 
 # ═══════════════════════════════════════════════════════════════
-# MÓDULO 3 — IA GEMINI
+# MÓDULO 3 — IMAGENS (PEXELS API)
+# ═══════════════════════════════════════════════════════════════
+
+def buscar_imagem_pexels(categoria: str) -> tuple[str, str]:
+    """
+    Busca uma imagem no Pexels baseada na categoria do artigo.
+    Retorna (url_imagem, alt_text).
+
+    - Usa termos em inglês para melhores resultados no Pexels.
+    - Seleciona a foto de maior resolução (landscape) da primeira página.
+    - Em caso de falha (sem API key, erro de rede, 0 resultados),
+      retorna a imagem de fallback sem lançar exceção.
+    """
+    api_key = os.environ.get("PEXELS_API_KEY")
+    if not api_key:
+        log.warning("⚠️  PEXELS_API_KEY não encontrada. Usando imagem fallback.")
+        return PEXELS_FALLBACK_IMAGE, PEXELS_FALLBACK_ALT
+
+    query = PEXELS_QUERY_MAP.get(categoria, PEXELS_QUERY_MAP["Finanças"])
+    query_encoded = urllib.parse.quote(query)
+    url = f"https://api.pexels.com/v1/search?query={query_encoded}&per_page=5&orientation=landscape"
+
+    try:
+        req = urllib.request.Request(url, headers={"Authorization": api_key})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+
+        fotos = data.get("photos", [])
+        if not fotos:
+            log.warning(f"⚠️  Nenhuma foto encontrada para '{query}'. Usando fallback.")
+            return PEXELS_FALLBACK_IMAGE, PEXELS_FALLBACK_ALT
+
+        foto  = fotos[0]
+        img_url = foto["src"].get("large2x") or foto["src"]["original"]
+        alt_text = foto.get("alt") or f"{categoria} - FinacePro"
+
+        log.info(f"🖼️  Imagem encontrada: {img_url[:60]}...")
+        return img_url, alt_text
+
+    except Exception as e:
+        log.warning(f"⚠️  Erro ao buscar imagem no Pexels: {e}. Usando fallback.")
+        return PEXELS_FALLBACK_IMAGE, PEXELS_FALLBACK_ALT
+
+
+# ═══════════════════════════════════════════════════════════════
+# MÓDULO 4 — IA GEMINI
 # ═══════════════════════════════════════════════════════════════
 
 def configurar_gemini():
@@ -127,19 +188,17 @@ def configurar_gemini():
         log.critical("❌ ERRO: GEMINI_API_KEY não encontrada!")
         sys.exit(1)
     client = genai.Client(api_key=api_key)
-    log.info(f"🤖 Gemini configurado com sucesso. Modelo: {GEMINI_MODEL}")
+    log.info(f"🤖 Gemini configurado. Modelo: {GEMINI_MODEL}")
     return client
 
 
 def gerar_artigo(client, titulo: str, fonte: str) -> Optional[str]:
     """
     Gera artigo via Gemini com retry automático em caso de erro 429.
-
-    MELHORIAS aplicadas:
-      - Troca para gemini-1.5-flash (cota separada do 2.0-flash)
-      - Retry com backoff exponencial em caso de RESOURCE_EXHAUSTED (429)
-      - Extrai o tempo de espera sugerido pela própria API quando disponível
-      - Distingue erros de cota (retriáveis) de erros fatais (não retriáveis)
+    - Troca para gemini-1.5-flash (cota separada do 2.0-flash)
+    - Retry com backoff exponencial (RESOURCE_EXHAUSTED / 429)
+    - Extrai o tempo de espera sugerido pela própria API quando disponível
+    - Distingue erros de cota (retriáveis) de erros fatais (não retriáveis)
     """
     data_hoje = datetime.now().strftime("%d/%m/%Y")
 
@@ -191,13 +250,9 @@ def gerar_artigo(client, titulo: str, fonte: str) -> Optional[str]:
         except Exception as e:
             erro_str = str(e)
 
-            # ── MELHORIA: trata especificamente erros de cota (429) ──
             if "429" in erro_str or "RESOURCE_EXHAUSTED" in erro_str:
-                # Tenta extrair o tempo de espera sugerido pela API
                 match = re.search(r"retry in (\d+)", erro_str, re.IGNORECASE)
-                espera_api = int(match.group(1)) + 5 if match else None
-
-                # Backoff exponencial como fallback: 60s, 120s, 240s...
+                espera_api    = int(match.group(1)) + 5 if match else None
                 espera_backoff = 60 * (2 ** (tentativa - 1))
                 espera = espera_api if espera_api else espera_backoff
 
@@ -213,7 +268,6 @@ def gerar_artigo(client, titulo: str, fonte: str) -> Optional[str]:
                         "Verifique seu plano em: https://ai.dev/rate-limit"
                     )
             else:
-                # Erro não relacionado a cota — não adianta tentar de novo
                 log.error(f"❌ Erro inesperado na API Gemini: {e}")
                 return None
 
@@ -222,7 +276,7 @@ def gerar_artigo(client, titulo: str, fonte: str) -> Optional[str]:
 
 
 # ═══════════════════════════════════════════════════════════════
-# MÓDULO 4 — ESTRUTURADOR HUGO
+# MÓDULO 5 — ESTRUTURADOR HUGO
 # ═══════════════════════════════════════════════════════════════
 
 def extrair_h1(md: str) -> str:
@@ -265,31 +319,45 @@ def detectar_meta(titulo: str) -> tuple:
     return categoria, list(dict.fromkeys(tags))
 
 
-def front_matter(titulo: str, categoria: str, tags: list) -> str:
-    data      = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-    tags_yaml = "\n".join(f'  - "{t}"' for t in tags)
+def front_matter(titulo: str, categoria: str, tags: list,
+                 img_url: str, img_alt: str) -> str:
+    """
+    Gera o front matter YAML com bloco `cover` para o tema PaperMod.
+    O campo `author` usa 'Conselho Editorial FinacePro' para E-E-A-T.
+    """
+    data        = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    tags_yaml   = "\n".join(f'  - "{t}"' for t in tags)
     titulo_safe = titulo.replace('"', "'")
+    img_alt_safe = img_alt.replace('"', "'")
+
     return (
         f'---\n'
         f'title: "{titulo_safe}"\n'
         f'date: {data}\n'
         f'draft: false\n'
+        f'author: "Conselho Editorial FinacePro"\n'
         f'categories:\n'
         f'  - "{categoria}"\n'
         f'tags:\n'
         f'{tags_yaml}\n'
         f'description: "Artigo sobre {titulo_safe[:80]}. Dicas para MEI brasileiros."\n'
-        f'author: "Redação Automática"\n'
+        f'cover:\n'
+        f'  image: "{img_url}"\n'
+        f'  alt: "{img_alt_safe}"\n'
+        f'  caption: "Fonte: Pexels"\n'
+        f'  relative: false\n'
+        f'  hidden: false\n'
         f'---\n\n'
     )
 
 
-def salvar_post(conteudo_md: str, pasta: Path) -> Optional[Path]:
+def salvar_post(conteudo_md: str, pasta: Path,
+                img_url: str, img_alt: str) -> Optional[Path]:
     try:
         pasta.mkdir(parents=True, exist_ok=True)
         titulo    = extrair_h1(conteudo_md)
         cat, tags = detectar_meta(titulo)
-        fm        = front_matter(titulo, cat, tags)
+        fm        = front_matter(titulo, cat, tags, img_url, img_alt)
 
         corpo = "\n".join(
             l for l in conteudo_md.splitlines()
@@ -312,7 +380,7 @@ def salvar_post(conteudo_md: str, pasta: Path) -> Optional[Path]:
 
 def main() -> None:
     log.info("=" * 60)
-    log.info("🏦  BLOG AUTOMATOR v2 — Cartões de Crédito & MEI")
+    log.info("🏦  BLOG AUTOMATOR v3 — Cartões de Crédito & MEI")
     log.info("=" * 60)
 
     client = configurar_gemini()
@@ -334,15 +402,32 @@ def main() -> None:
     criados = 0
     for noticia in novas[:MAX_POSTS]:
         log.info(f"\n{'─'*50}")
+
+        # ── Passo 1: detectar categoria para guiar a busca de imagem ──
+        _, tags_temp = detectar_meta(noticia["titulo"])
+        cat_temp, _  = detectar_meta(noticia["titulo"])
+
+        # ── Passo 2: buscar imagem no Pexels ──
+        log.info("🖼️  Buscando imagem no Pexels...")
+        img_url, img_alt = buscar_imagem_pexels(cat_temp)
+
+        # ── Passo 3: pequena pausa antes de chamar o Gemini ──
+        log.info(f"⏳ Aguardando {PEXELS_DELAY}s (sincronização Pexels → Gemini)...")
+        time.sleep(PEXELS_DELAY)
+
+        # ── Passo 4: gerar artigo com o Gemini ──
         artigo = gerar_artigo(client, noticia["titulo"], noticia["fonte"])
         if artigo is None:
             continue
-        path = salvar_post(artigo, CONTENT_DIR)
+
+        # ── Passo 5: salvar post com imagem no front matter ──
+        path = salvar_post(artigo, CONTENT_DIR, img_url, img_alt)
         if path:
             salvar_historico(HISTORICO_FILE, noticia["hash"])
             criados += 1
+
         if criados < MAX_POSTS:
-            log.info(f"⏳ Aguardando {API_DELAY}s entre posts (rate limit)...")
+            log.info(f"⏳ Aguardando {API_DELAY}s entre posts (rate limit Gemini)...")
             time.sleep(API_DELAY)
 
     log.info(f"\n🚀 [4/4] Publicando {criados} post(s)...")
