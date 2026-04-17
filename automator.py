@@ -50,7 +50,13 @@ KEYWORDS = [
 CONTENT_DIR    = Path("content/posts")
 HISTORICO_FILE = Path("historico.txt")
 MAX_POSTS      = 3
-API_DELAY      = 8
+
+# ── MELHORIA: delay mais conservador para evitar esgotar RPM ──
+API_DELAY      = 30   # era 8s; aumentado para respeitar rate limits
+
+# ── MELHORIA: modelo alternativo com cota separada do 2.0-flash ──
+GEMINI_MODEL         = "gemini-1.5-flash"
+GEMINI_MAX_TENTATIVAS = 3   # tentativas com backoff em caso de 429
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -111,7 +117,7 @@ def filtrar_novas(noticias: list, historico: set) -> list:
 
 
 # ═══════════════════════════════════════════════════════════════
-# MÓDULO 3 — IA GEMINI (CORRIGIDO)
+# MÓDULO 3 — IA GEMINI
 # ═══════════════════════════════════════════════════════════════
 
 def configurar_gemini():
@@ -121,18 +127,22 @@ def configurar_gemini():
         log.critical("❌ ERRO: GEMINI_API_KEY não encontrada!")
         sys.exit(1)
     client = genai.Client(api_key=api_key)
-    log.info("🤖 Gemini configurado com sucesso.")
+    log.info(f"🤖 Gemini configurado com sucesso. Modelo: {GEMINI_MODEL}")
     return client
 
 
 def gerar_artigo(client, titulo: str, fonte: str) -> Optional[str]:
     """
-    Gera artigo via Gemini 2.0 Flash.
-    CORREÇÃO: prompt usa triple-quotes para evitar quebra de f-string.
+    Gera artigo via Gemini com retry automático em caso de erro 429.
+
+    MELHORIAS aplicadas:
+      - Troca para gemini-1.5-flash (cota separada do 2.0-flash)
+      - Retry com backoff exponencial em caso de RESOURCE_EXHAUSTED (429)
+      - Extrai o tempo de espera sugerido pela própria API quando disponível
+      - Distingue erros de cota (retriáveis) de erros fatais (não retriáveis)
     """
     data_hoje = datetime.now().strftime("%d/%m/%Y")
 
-    # ── CORREÇÃO: usa triple-quotes e escapa as aspas do título ──
     prompt = (
         "Aja como especialista em finanças para MEI e empreendedores brasileiros.\n\n"
         f"Com base na notícia: '{titulo}' (fonte: {fonte})\n\n"
@@ -167,18 +177,48 @@ def gerar_artigo(client, titulo: str, fonte: str) -> Optional[str]:
         "- Entre 800 e 1200 palavras"
     )
 
-    try:
-        log.info(f"🧠 Gerando artigo: '{titulo[:60]}...'")
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-        )
-        conteudo = response.text.strip()
-        log.info(f"✅ Artigo gerado ({len(conteudo)} chars)")
-        return conteudo
-    except Exception as e:
-        log.error(f"❌ Erro na API Gemini: {e}")
-        return None
+    for tentativa in range(1, GEMINI_MAX_TENTATIVAS + 1):
+        try:
+            log.info(f"🧠 Tentativa {tentativa}/{GEMINI_MAX_TENTATIVAS}: '{titulo[:60]}...'")
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt,
+            )
+            conteudo = response.text.strip()
+            log.info(f"✅ Artigo gerado ({len(conteudo)} chars)")
+            return conteudo
+
+        except Exception as e:
+            erro_str = str(e)
+
+            # ── MELHORIA: trata especificamente erros de cota (429) ──
+            if "429" in erro_str or "RESOURCE_EXHAUSTED" in erro_str:
+                # Tenta extrair o tempo de espera sugerido pela API
+                match = re.search(r"retry in (\d+)", erro_str, re.IGNORECASE)
+                espera_api = int(match.group(1)) + 5 if match else None
+
+                # Backoff exponencial como fallback: 60s, 120s, 240s...
+                espera_backoff = 60 * (2 ** (tentativa - 1))
+                espera = espera_api if espera_api else espera_backoff
+
+                if tentativa < GEMINI_MAX_TENTATIVAS:
+                    log.warning(
+                        f"⏳ Cota atingida (429). Aguardando {espera}s antes "
+                        f"da tentativa {tentativa + 1}/{GEMINI_MAX_TENTATIVAS}..."
+                    )
+                    time.sleep(espera)
+                else:
+                    log.error(
+                        f"❌ Cota esgotada após {GEMINI_MAX_TENTATIVAS} tentativas. "
+                        "Verifique seu plano em: https://ai.dev/rate-limit"
+                    )
+            else:
+                # Erro não relacionado a cota — não adianta tentar de novo
+                log.error(f"❌ Erro inesperado na API Gemini: {e}")
+                return None
+
+    log.error(f"❌ Todas as {GEMINI_MAX_TENTATIVAS} tentativas falharam. Pulando artigo.")
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -275,7 +315,6 @@ def main() -> None:
     log.info("🏦  BLOG AUTOMATOR v2 — Cartões de Crédito & MEI")
     log.info("=" * 60)
 
-    # CORREÇÃO: variável renomeada para "client" em todo o fluxo
     client = configurar_gemini()
 
     log.info("\n📡 [1/4] Buscando notícias RSS...")
@@ -295,7 +334,6 @@ def main() -> None:
     criados = 0
     for noticia in novas[:MAX_POSTS]:
         log.info(f"\n{'─'*50}")
-        # CORREÇÃO: passa "client" (não "model")
         artigo = gerar_artigo(client, noticia["titulo"], noticia["fonte"])
         if artigo is None:
             continue
@@ -304,7 +342,7 @@ def main() -> None:
             salvar_historico(HISTORICO_FILE, noticia["hash"])
             criados += 1
         if criados < MAX_POSTS:
-            log.info(f"⏳ Aguardando {API_DELAY}s (rate limit)...")
+            log.info(f"⏳ Aguardando {API_DELAY}s entre posts (rate limit)...")
             time.sleep(API_DELAY)
 
     log.info(f"\n🚀 [4/4] Publicando {criados} post(s)...")
