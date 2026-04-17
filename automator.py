@@ -11,27 +11,12 @@ import sys
 import time
 import hashlib
 import logging
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 import feedparser
-from google import genai  # <--- Use esta que é a versão moderna
-
-
-# Adicionado 
-
-def configurar_gemini():
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print("❌ ERRO: GEMINI_API_KEY não encontrada!")
-        sys.exit(1)
-    
-    # Cria o cliente para o Gemini 2.0 Flash
-    client = genai.Client(api_key=api_key)
-    return client
-
+from google import genai
 
 # ─────────────────────────────────────────────
 # LOGGING
@@ -62,18 +47,18 @@ KEYWORDS = [
     "fintechs", "conta pj", "crédito empresarial",
 ]
 
-CONTENT_DIR   = Path("content/posts")
+CONTENT_DIR    = Path("content/posts")
 HISTORICO_FILE = Path("historico.txt")
 MAX_POSTS      = 3
-API_DELAY      = 8   # segundos entre chamadas ao Gemini
+API_DELAY      = 8
 
 
 # ═══════════════════════════════════════════════════════════════
 # MÓDULO 1 — SCRAPER RSS
 # ═══════════════════════════════════════════════════════════════
 
-def buscar_noticias(feeds: list[str], keywords: list[str]) -> list[dict]:
-    encontradas: list[dict] = []
+def buscar_noticias(feeds: list, keywords: list) -> list:
+    encontradas = []
     for url in feeds:
         log.info(f"📡 Feed: {url}")
         try:
@@ -103,7 +88,7 @@ def buscar_noticias(feeds: list[str], keywords: list[str]) -> list[dict]:
 def _hash(link: str) -> str:
     return hashlib.md5(link.encode()).hexdigest()
 
-def carregar_historico(arq: Path) -> set[str]:
+def carregar_historico(arq: Path) -> set:
     if not arq.exists():
         arq.touch()
         return set()
@@ -114,7 +99,7 @@ def salvar_historico(arq: Path, h: str) -> None:
     with open(arq, "a", encoding="utf-8") as f:
         f.write(h + "\n")
 
-def filtrar_novas(noticias: list[dict], historico: set[str]) -> list[dict]:
+def filtrar_novas(noticias: list, historico: set) -> list:
     novas = []
     for n in noticias:
         h = _hash(n["link"])
@@ -126,64 +111,75 @@ def filtrar_novas(noticias: list[dict], historico: set[str]) -> list[dict]:
 
 
 # ═══════════════════════════════════════════════════════════════
-# MÓDULO 3 — IA GEMINI
+# MÓDULO 3 — IA GEMINI (CORRIGIDO)
 # ═══════════════════════════════════════════════════════════════
 
-def gerar_artigo(client, titulo, fonte):
+def configurar_gemini():
+    """Inicializa e retorna o client do Gemini."""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        log.critical("❌ ERRO: GEMINI_API_KEY não encontrada!")
+        sys.exit(1)
+    client = genai.Client(api_key=api_key)
+    log.info("🤖 Gemini configurado com sucesso.")
+    return client
+
+
+def gerar_artigo(client, titulo: str, fonte: str) -> Optional[str]:
+    """
+    Gera artigo via Gemini 2.0 Flash.
+    CORREÇÃO: prompt usa triple-quotes para evitar quebra de f-string.
+    """
+    data_hoje = datetime.now().strftime("%d/%m/%Y")
+
+    # ── CORREÇÃO: usa triple-quotes e escapa as aspas do título ──
+    prompt = (
+        "Aja como especialista em finanças para MEI e empreendedores brasileiros.\n\n"
+        f"Com base na notícia: '{titulo}' (fonte: {fonte})\n\n"
+        "Escreva um artigo de blog COMPLETO em Markdown com esta estrutura EXATA:\n\n"
+        "# [Título chamativo e otimizado para SEO]\n\n"
+        "**Tempo de leitura:** X minutos\n\n"
+        "## Introdução\n"
+        "[2 parágrafos focados na DOR do MEI. Use dados reais do mercado brasileiro. "
+        "Crie urgência e empatia.]\n\n"
+        "## [Subtópico 1 — Benefício ou conceito principal]\n"
+        "[2-3 parágrafos. Inclua dados, percentuais, comparações de taxas.]\n\n"
+        "## [Subtópico 2 — Como funciona na prática]\n"
+        "[Lista numerada com pelo menos 5 passos práticos + 1-2 parágrafos explicativos.]\n\n"
+        "## [Subtópico 3 — Erros comuns e melhores opções]\n"
+        "[2-3 parágrafos com cuidados, comparativo de instituições e recomendações para MEI.]\n\n"
+        "## Conclusão\n"
+        "[1 parágrafo resumindo e incentivando a ação.]\n\n"
+        "## FAQ — Perguntas Frequentes\n\n"
+        "**P: [Pergunta 1]?**\n"
+        "R: [Resposta objetiva]\n\n"
+        "**P: [Pergunta 2]?**\n"
+        "R: [Resposta objetiva]\n\n"
+        "**P: [Pergunta 3]?**\n"
+        "R: [Resposta objetiva]\n\n"
+        "---\n"
+        f"*Atualizado em {data_hoje}. Consulte sempre um especialista financeiro.*\n\n"
+        "REGRAS:\n"
+        "- Português do Brasil apenas\n"
+        "- Linguagem acessível, sem jargões\n"
+        "- Mencione a keyword principal 3-5x naturalmente\n"
+        "- NÃO inclua texto fora da estrutura (sem 'Claro!', sem introduções)\n"
+        "- Entre 800 e 1200 palavras"
+    )
+
     try:
+        log.info(f"🧠 Gerando artigo: '{titulo[:60]}...'")
         response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=f"Aja como especialista em finanças para MEI e empreendedores brasileiros.
-
-Com base na notícia: "{titulo}" (fonte: {fonte})
-
-Escreva um artigo de blog COMPLETO em Markdown com esta estrutura EXATA:
-
-# [Título chamativo e otimizado para SEO]
-
-**Tempo de leitura:** X minutos
-
-## Introdução
-[2 parágrafos focados na DOR do MEI. Use dados reais do mercado brasileiro. Crie urgência e empatia.]
-
-## [Subtópico 1 — Benefício ou conceito principal]
-[2-3 parágrafos. Inclua dados, percentuais, comparações de taxas.]
-
-## [Subtópico 2 — Como funciona na prática]
-[Lista numerada com pelo menos 5 passos práticos + 1-2 parágrafos explicativos.]
-
-## [Subtópico 3 — Erros comuns e melhores opções]
-[2-3 parágrafos com cuidados, comparativo de instituições e recomendações para MEI.]
-
-## Conclusão
-[1 parágrafo resumindo e incentivando a ação.]
-
-## FAQ — Perguntas Frequentes
-
-**P: [Pergunta 1]?**
-R: [Resposta objetiva]
-
-**P: [Pergunta 2]?**
-R: [Resposta objetiva]
-
-**P: [Pergunta 3]?**
-R: [Resposta objetiva]
-
----
-*Atualizado em {datetime.now().strftime("%d/%m/%Y")}. Consulte sempre um especialista financeiro.*
-
-REGRAS:
-- Português do Brasil apenas
-- Linguagem acessível, sem jargões
-- Mencione a keyword principal 3-5x naturalmente
-- NÃO inclua texto fora da estrutura (sem "Claro!", sem introduções)
-- Entre 800 e 1200 palavras
-"""    
+            model="gemini-2.0-flash",
+            contents=prompt,
         )
-        return response.text
+        conteudo = response.text.strip()
+        log.info(f"✅ Artigo gerado ({len(conteudo)} chars)")
+        return conteudo
     except Exception as e:
-        print(f"Erro na IA: {e}")
+        log.error(f"❌ Erro na API Gemini: {e}")
         return None
+
 
 # ═══════════════════════════════════════════════════════════════
 # MÓDULO 4 — ESTRUTURADOR HUGO
@@ -211,7 +207,7 @@ def slugify(texto: str) -> str:
     return slug[:80]
 
 
-def detectar_meta(titulo: str) -> tuple[str, list[str]]:
+def detectar_meta(titulo: str) -> tuple:
     tl = titulo.lower()
     categoria, tags = "Finanças", []
     if any(k in tl for k in ["cartão","cartao","crédito","credito"]):
@@ -229,22 +225,23 @@ def detectar_meta(titulo: str) -> tuple[str, list[str]]:
     return categoria, list(dict.fromkeys(tags))
 
 
-def front_matter(titulo: str, categoria: str, tags: list[str]) -> str:
-    data = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+def front_matter(titulo: str, categoria: str, tags: list) -> str:
+    data      = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
     tags_yaml = "\n".join(f'  - "{t}"' for t in tags)
-    return f"""---
-title: "{titulo.replace('"', "'")}"
-date: {data}
-draft: false
-categories:
-  - "{categoria}"
-tags:
-{tags_yaml}
-description: "Artigo completo sobre {titulo[:100]}. Dicas para MEI e empreendedores brasileiros."
-author: "Redação Automática"
----
-
-"""
+    titulo_safe = titulo.replace('"', "'")
+    return (
+        f'---\n'
+        f'title: "{titulo_safe}"\n'
+        f'date: {data}\n'
+        f'draft: false\n'
+        f'categories:\n'
+        f'  - "{categoria}"\n'
+        f'tags:\n'
+        f'{tags_yaml}\n'
+        f'description: "Artigo sobre {titulo_safe[:80]}. Dicas para MEI brasileiros."\n'
+        f'author: "Redação Automática"\n'
+        f'---\n\n'
+    )
 
 
 def salvar_post(conteudo_md: str, pasta: Path) -> Optional[Path]:
@@ -254,7 +251,6 @@ def salvar_post(conteudo_md: str, pasta: Path) -> Optional[Path]:
         cat, tags = detectar_meta(titulo)
         fm        = front_matter(titulo, cat, tags)
 
-        # Remove o H1 do corpo (já está no front matter como title)
         corpo = "\n".join(
             l for l in conteudo_md.splitlines()
             if not l.strip().startswith("# ")
@@ -271,38 +267,6 @@ def salvar_post(conteudo_md: str, pasta: Path) -> Optional[Path]:
 
 
 # ═══════════════════════════════════════════════════════════════
-# MÓDULO 5 — AUTO-DEPLOY GIT
-# ═══════════════════════════════════════════════════════════════
-
-def git(cmd: list[str]) -> bool:
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding="utf-8")
-        if r.stdout.strip():
-            log.info(f"   git: {r.stdout.strip()}")
-        return True
-    except subprocess.CalledProcessError as e:
-        log.error(f"❌ git {' '.join(cmd)}: {e.stderr.strip()}")
-        return False
-
-
-def deploy(msg: str) -> bool:
-    log.info("🚀 Iniciando deploy...")
-    etapas = [
-        (["git", "config", "user.email", "bot@blog-automator.com"], True),
-        (["git", "config", "user.name",  "Blog Automator Bot"],      True),
-        (["git", "add", "."],                                          True),
-        (["git", "commit", "-m", msg],                                False),  # False = falha não é crítica
-        (["git", "push"],                                              True),
-    ]
-    for cmd, critico in etapas:
-        ok = git(cmd)
-        if not ok and critico:
-            return False
-    log.info("✅ Deploy concluído!")
-    return True
-
-
-# ═══════════════════════════════════════════════════════════════
 # ORQUESTRADOR
 # ═══════════════════════════════════════════════════════════════
 
@@ -311,9 +275,8 @@ def main() -> None:
     log.info("🏦  BLOG AUTOMATOR v2 — Cartões de Crédito & MEI")
     log.info("=" * 60)
 
-    model = configurar_gemini()
-    if model is None:
-        sys.exit(1)
+    # CORREÇÃO: variável renomeada para "client" em todo o fluxo
+    client = configurar_gemini()
 
     log.info("\n📡 [1/4] Buscando notícias RSS...")
     noticias = buscar_noticias(RSS_FEEDS, KEYWORDS)
@@ -332,7 +295,8 @@ def main() -> None:
     criados = 0
     for noticia in novas[:MAX_POSTS]:
         log.info(f"\n{'─'*50}")
-        artigo = gerar_artigo(model, noticia["titulo"], noticia["fonte"])
+        # CORREÇÃO: passa "client" (não "model")
+        artigo = gerar_artigo(client, noticia["titulo"], noticia["fonte"])
         if artigo is None:
             continue
         path = salvar_post(artigo, CONTENT_DIR)
@@ -348,14 +312,9 @@ def main() -> None:
         log.warning("Nenhum post criado. Deploy cancelado.")
         sys.exit(0)
 
-    data = datetime.now().strftime("%d/%m/%Y %H:%M")
-    ok   = deploy(f"🤖 Auto-post: {criados} artigo(s) — {data}")
-
     log.info("\n" + "=" * 60)
-    log.info(f"{'🎉 SUCESSO!' if ok else '💥 FALHA NO DEPLOY'} {criados} post(s) processado(s).")
+    log.info(f"🎉 CONCLUÍDO! {criados} post(s) gerado(s) e salvo(s).")
     log.info("=" * 60)
-    if not ok:
-        sys.exit(1)
 
 
 if __name__ == "__main__":
