@@ -65,11 +65,11 @@ jobs:
             echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
 
-      # 🔥 CORREÇÃO PRINCIPAL: Hugo 0.146.0+ para compatibilidade com PaperMod
+      # 🔥 CORREÇÃO: Hugo 0.146.0+ para compatibilidade com PaperMod
       - name: 🏗️ Setup Hugo (v0.146.0+)
         uses: peaceiris/actions-hugo@v3
         with:
-          hugo-version: "0.146.0"  # ← VERSÃO MÍNIMA PARA PAPERMOD ATUAL
+          hugo-version: "0.146.0"
           extended: true
 
       - name: 🔨 Build Hugo com verificação
@@ -77,15 +77,15 @@ jobs:
           echo "🔍 Versão do Hugo:"
           hugo version
           
-          echo "📁 Estrutura do tema:"
-          ls -la themes/PaperMod/layouts/partials/ | head -20
+          echo "📁 Verificando partials do PaperMod:"
+          ls -la themes/PaperMod/layouts/partials/ | grep -E "head|google" || echo "⚠️ Verificar partials"
           
           # Build com flags adequadas
           hugo --minify --gc --baseURL "${{ secrets.SITE_URL || 'https://PortalRapNacional.github.io/FinacePro/' }}"
           
-          # Verificação crítica: pasta public deve existir e ter conteúdo
+          # Verificação crítica
           if [ ! -d "public" ] || [ -z "$(ls -A public 2>/dev/null)" ]; then
-            echo "❌ Erro crítico: Pasta 'public' vazia!"
+            echo "❌ Erro: Pasta 'public' vazia!"
             echo "has_changes=false" >> $GITHUB_OUTPUT
             exit 1
           fi
