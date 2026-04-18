@@ -4,63 +4,59 @@ title = "FinacePro | Crédito, MEI e Soluções Financeiras"
 theme = "PaperMod"
 disableKinds = ["taxonomy", "term"]
 
-# ✅ CORREÇÃO: Substitui "paginate = 12" pela sintaxe compatível
+# ✅ CORREÇÃO: Substitui "paginate = 12" pela sintaxe compatível com Hugo ≥0.128
 [pagination]
 pagerSize = 12
 
 [params]
-env         = "production"
-title       = "FinacePro"
+env = "production"
+title = "FinacePro"
 description = "Guia completo sobre cartões de crédito para MEI, empréstimos e educação financeira."
-author      = "Conselho Editorial FinacePro"
-defaultTheme    = "light"
+author = "Conselho Editorial FinacePro"
+defaultTheme = "light"
 disableThemeToggle = true
-ShowReadingTime    = true
-ShowBreadCrumbs    = true
-ShowPostNavLinks   = true
+ShowReadingTime = true
+ShowBreadCrumbs = true
+ShowPostNavLinks = true
 ShowCodeCopyButtons = true
-ShowShareButtons   = true
-ShowToc            = true
+ShowShareButtons = true
+ShowToc = true
 
 [params.cover]
 linkFullImages = true
 responsiveImages = true
 
 [params.homeInfoParams]
-Title   = "💰 Inteligência Financeira e Crédito para MEI"
+Title = "💰 Inteligência Financeira e Crédito para MEI"
 Content = "As melhores análises de cartões, crédito empresarial e dicas para organizar as finanças do seu negócio."
 
 [[params.socialIcons]]
 name = "email"
-url  = "mailto:contato@finacepro.com"
+url = "mailto:contato@finacepro.com"
 
 [build]
 publishResources = true
-renderDrafts     = true
-renderFuture     = true
-renderExpired    = true
+renderDrafts = true
+renderFuture = true
+renderExpired = true
 
 [[menu.main]]
-name   = "💳 Cartões"
-url    = "/posts/"
+name = "💳 Cartões"
+url = "/posts/"
 weight = 10
-
 [[menu.main]]
-name   = "🏢 MEI"
-url    = "/posts/"
+name = "🏢 MEI"
+url = "/posts/"
 weight = 20
-
 [[menu.main]]
-name   = "📈 Empréstimos"
-url    = "/posts/"
+name = "📈 Empréstimos"
+url = "/posts/"
 weight = 30
-
 [[menu.main]]
-name   = "Sobre"
-url    = "/about"
+name = "Sobre"
+url = "/about"
 weight = 40
-
 [[menu.main]]
-name   = "Privacidade"
-url    = "/privacy"
+name = "Privacidade"
+url = "/privacy"
 weight = 50
