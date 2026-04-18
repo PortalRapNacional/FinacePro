@@ -1,102 +1,129 @@
-name: 🤖 Blog Automator Full v4.1
+name: 🤖 Blog Automator Full v4.2
 
 on:
   schedule:
-    # [NEW] Execução única diária às 03:00 UTC (meia-noite BR)
-    # Motivo: reduz chamadas API em 50% + menor concorrência no deploy
+    # Execução única diária às 03:00 UTC (meia-noite BR)
     - cron: '0 3 * * *'
   workflow_dispatch:
 
-# Permissões mínimas necessárias
+# Permissões necessárias para Pages + Deploy
 permissions:
   contents: write
   pages: write
   id-token: write
 
-# Cancela execuções anteriores para evitar race conditions
+# Cancela execuções anteriores para evitar conflitos
 concurrency:
   group: "pages"
   cancel-in-progress: true
 
 jobs:
+  # ─────────────────────────────────────────────
+  # JOB 1: Gerar conteúdo + Build Hugo
+  # ─────────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
-    env:
-      # [NEW] Variáveis de controle de tier e comportamento
-      GEMINI_TIER: ${{ vars.GEMINI_TIER || 'free' }}  # 'free' ou 'paid'
-      MAX_POSTS_OVERRIDE: ${{ vars.MAX_POSTS || '' }}  # Opcional: força limite
+    outputs:
+      # Passa flag para o job de deploy saber se há conteúdo novo
+      has_changes: ${{ steps.check-changes.outputs.has_changes }}
     
     steps:
-      - name: 📥 Checkout
+      - name: 📥 Checkout com submodules
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
+          submodules: recursive  # CRÍTICO: PaperMod é submodule!
 
-      - name: 🐍 Configurar Python
+      - name: 🐍 Configurar Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: 'pip'
 
-      - name: 📦 Instalar Dependências
+      - name: 📦 Instalar Dependências Python
         run: |
           python -m pip install --upgrade pip
-          pip install google-genai feedparser
+          pip install google-genai==1.2.0 feedparser==6.0.11
 
-      - name: 🗂️ Criar diretório de cache
+      - name: 🗂️ Criar diretório de cache da IA
         run: mkdir -p .gemini_cache
 
-      - name: 🚀 Gerar Post com IA
+      - name: 🚀 Gerar Post com IA (Gemini + Pexels)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          # [NEW] Passa tier para o script Python
-          GEMINI_TIER: ${{ env.GEMINI_TIER }}
         run: python automator.py
-        continue-on-error: false  # Script já faz graceful exit
+        continue-on-error: false  # Script já faz graceful exit internamente
 
-      - name: 💾 Salvar Post no Repo (somente se houve alterações)
+      - name: 💾 Commitar novos posts (se houver)
+        id: commit-posts
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Verifica se há novos posts antes de commitar
-          if git diff --quiet -- content/posts/; then
-            echo "ℹ️ Nenhum novo post gerado. Pulando commit."
-            echo "posts_created=false" >> $GITHUB_ENV
+          # Verifica se há alterações nos posts ou histórico
+          if git diff --quiet -- content/posts/ historico.txt; then
+            echo "ℹ️ Nenhum novo conteúdo gerado."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
           else
             git add content/posts/ historico.txt .gemini_cache/
-            git commit -m "📝 Novo post automático - $(date +'%Y-%m-%d')"
+            git commit -m "📝 Auto-post: $(date +'%Y-%m-%d %H:%M UTC')"
             git push
-            echo "posts_created=true" >> $GITHUB_ENV
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✅ Novos posts commitados!"
           fi
 
-      - name: 🏗️ Setup Hugo
-        if: env.posts_created == 'true'
+      - name: 🏗️ Setup Hugo (sempre executa)
         uses: peaceiris/actions-hugo@v3
         with:
-          hugo-version: "latest"
-          extended: true
+          hugo-version: "0.128.0"  # Versão específica para evitar breaking changes
+          extended: true  # Necessário para Sass do PaperMod
 
-      - name: 🔨 Build Hugo
-        if: env.posts_created == 'true'
-        run: hugo --minify --gc --baseURL ${{ secrets.SITE_URL || 'https://PortalRapNacional.github.io/FinacePro/' }}
+      - name: 🔨 Build Hugo com verificação
+        run: |
+          echo "📁 Estrutura antes do build:"
+          ls -la
+          echo "🎨 Tema PaperMod:"
+          ls -la themes/PaperMod 2>/dev/null || echo "⚠️ Tema não encontrado!"
+          
+          # Build com flags de segurança
+          hugo --minify --gc --verbose --baseURL "${{ secrets.SITE_URL || 'https://PortalRapNacional.github.io/FinacePro/' }}"
+          
+          # Verifica se a pasta public foi gerada com conteúdo
+          if [ ! -d "public" ] || [ -z "$(ls -A public 2>/dev/null)" ]; then
+            echo "❌ Erro: Pasta 'public' vazia ou inexistente!"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "✅ Build Hugo concluído: $(ls public | wc -l) arquivos gerados"
 
-      - name: 📤 Upload Artifact
-        if: env.posts_created == 'true'
-        uses: actions/upload-pages-artifact@v3
+      - name: 📤 Upload Artifact para Pages
+        uses: actions/upload-pages-artifact@v3  # ← Ação OFICIAL do GitHub Pages
         with:
-          path: ./public
+          path: ./public  # Deve existir e ter conteúdo
 
+      - name: 📋 Check final de mudanças
+        id: check-changes
+        run: |
+          # Se não houve commit de posts, mas o build funcionou, ainda pode ser deploy inicial
+          if [[ "${{ steps.commit-posts.outputs.has_changes }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ─────────────────────────────────────────────
+  # JOB 2: Deploy para GitHub Pages (só se houver mudanças)
+  # ─────────────────────────────────────────────
   deploy:
     needs: build
-    if: needs.build.outputs.posts_created == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.build.outputs.has_changes == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    
     steps:
-      - name: 🌐 Finalizar Deploy
+      - name: 🌐 Deploy para GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v4  # ← Ação OFICIAL de deploy
