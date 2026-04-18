@@ -96,7 +96,8 @@ jobs:
     if: needs.build.outputs.has_changes == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment:
-      name: github-pages      url: ${{ steps.deployment.outputs.page_url }}
+      name: github-pages    
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: 🌐 Deploy GitHub Pages
         uses: actions/deploy-pages@v4
