@@ -1,15 +1,19 @@
-name: 🤖 Blog Automator Full
+name: 🤖 Blog Automator Full v4.1
 
 on:
   schedule:
-    - cron: '0 0,12 * * *'
+    # [NEW] Execução única diária às 03:00 UTC (meia-noite BR)
+    # Motivo: reduz chamadas API em 50% + menor concorrência no deploy
+    - cron: '0 3 * * *'
   workflow_dispatch:
 
+# Permissões mínimas necessárias
 permissions:
   contents: write
   pages: write
   id-token: write
 
+# Cancela execuções anteriores para evitar race conditions
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -17,6 +21,11 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # [NEW] Variáveis de controle de tier e comportamento
+      GEMINI_TIER: ${{ vars.GEMINI_TIER || 'free' }}  # 'free' ou 'paid'
+      MAX_POSTS_OVERRIDE: ${{ vars.MAX_POSTS || '' }}  # Opcional: força limite
+    
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
@@ -28,44 +37,66 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: 'pip'
 
       - name: 📦 Instalar Dependências
         run: |
           python -m pip install --upgrade pip
           pip install google-genai feedparser
 
+      - name: 🗂️ Criar diretório de cache
+        run: mkdir -p .gemini_cache
+
       - name: 🚀 Gerar Post com IA
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}   # ← NOVO: busca de imagens
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          # [NEW] Passa tier para o script Python
+          GEMINI_TIER: ${{ env.GEMINI_TIER }}
         run: python automator.py
+        continue-on-error: false  # Script já faz graceful exit
 
-      - name: 💾 Salvar Post no Repo
+      - name: 💾 Salvar Post no Repo (somente se houve alterações)
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@://github.com"
-          git add .
-          git diff --quiet && git diff --staged --quiet || (git commit -m "📝 Novo post automático" && git push)
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Verifica se há novos posts antes de commitar
+          if git diff --quiet -- content/posts/; then
+            echo "ℹ️ Nenhum novo post gerado. Pulando commit."
+            echo "posts_created=false" >> $GITHUB_ENV
+          else
+            git add content/posts/ historico.txt .gemini_cache/
+            git commit -m "📝 Novo post automático - $(date +'%Y-%m-%d')"
+            git push
+            echo "posts_created=true" >> $GITHUB_ENV
+          fi
 
       - name: 🏗️ Setup Hugo
+        if: env.posts_created == 'true'
         uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: "latest"
           extended: true
 
       - name: 🔨 Build Hugo
-        run: hugo --minify --gc
+        if: env.posts_created == 'true'
+        run: hugo --minify --gc --baseURL ${{ secrets.SITE_URL || 'https://PortalRapNacional.github.io/FinacePro/' }}
 
       - name: 📤 Upload Artifact
+        if: env.posts_created == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
   deploy:
     needs: build
+    if: needs.build.outputs.posts_created == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: 🌐 Finalizar Deploy
+        id: deployment
         uses: actions/deploy-pages@v4
