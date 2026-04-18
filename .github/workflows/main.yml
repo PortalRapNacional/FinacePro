@@ -1,7 +1,8 @@
-name: 🤖 Blog Automator Full
+name: 🤖 Blog Automator Full v4.5
 
 on:
   schedule:
+    # ✅ Execução ÚNICA diária às 03:00 UTC (meia-noite BR) — reduz chamadas API em 50%
     - cron: '0 3 * * *'
   workflow_dispatch:
 
@@ -18,8 +19,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      has_changes: ${{ steps.check-changes.outputs.has_changes }}
-    
+      has_changes: ${{ steps.check.outputs.has_changes }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
@@ -27,34 +27,34 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: 🐍 Configurar Python
+      - name: 🐍 Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: 'pip'
 
-      - name: 📦 Instalar Dependências
+      - name: 📦 Dependências
         run: |
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
           pip install google-genai feedparser
 
-      - name: 🗂️ Criar cache IA
+      - name: 🗂️ Cache dir
         run: mkdir -p .gemini_cache
 
-      - name: 🚀 Gerar Post com IA
+      - name: 🚀 Gerar Post
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          GEMINI_TIER: ${{ vars.GEMINI_TIER || 'free' }}
+          GEMINI_TIER: ${{ vars.GEMINI_TIER || 'free' }}  # ← Define free/pago
         run: python automator.py
         continue-on-error: false
-      - name: 💾 Salvar Post no Repo
-        id: commit-posts
+
+      - name: 💾 Commit se houver novo post
+        id: commit
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           if git diff --quiet -- content/posts/ historico.txt; then
-            echo "ℹ️ Sem novos posts."
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
             git add content/posts/ historico.txt .gemini_cache/
@@ -63,29 +63,26 @@ jobs:
             echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: 🏗️ Setup Hugo (v0.146.0)
+      - name: 🏗️ Hugo 0.146.0 (PaperMod compat)
         uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: "0.146.0"
           extended: true
 
-      - name: 🔨 Build Hugo
+      - name: 🔨 Build
         run: |
           hugo --minify --gc --baseURL "${{ secrets.SITE_URL || 'https://PortalRapNacional.github.io/FinacePro/' }}"
-          if [ ! -d "public" ] || [ -z "$(ls -A public 2>/dev/null)" ]; then
-            echo "❌ Build falhou: pasta public vazia"
-            exit 1
-          fi
+          test -d public && test -n "$(ls -A public)" || exit 1
 
-      - name: 📤 Upload Artifact
+      - name: 📤 Upload
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
-      - name: 📋 Check final
-        id: check-changes
+      - name: 📋 Check
+        id: check
         run: |
-          if [[ "${{ steps.commit-posts.outputs.has_changes }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          if [[ "${{ steps.commit.outputs.has_changes }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -96,8 +93,9 @@ jobs:
     if: needs.build.outputs.has_changes == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment:
-      name: github-pages    
-      url: ${{ steps.deployment.outputs.page_url }}
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - name: 🌐 Deploy GitHub Pages
+      - name: 🌐 Deploy
+        id: deploy
         uses: actions/deploy-pages@v4
