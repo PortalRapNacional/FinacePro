@@ -1,15 +1,15 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║         BLOG AUTOMATOR v4.2 — Cartões de Crédito & MEI          ║
+║         BLOG AUTOMATOR v4.1 — Cartões de Crédito & MEI          ║
 ║   Stack: Hugo + GitHub Pages + Gemini AI + Pexels + Actions     ║
-║   [NOVO] Feeds corrigidos + Filtro por scoring + Fallback GNews ║
+║   [NOVO] Cache em disco + Backoff exponencial + Fallback Graceful║
 ╚══════════════════════════════════════════════════════════════════╝
-CORREÇÕES v4.2:
-[FIX] RSS feeds quebrados substituídos por alternativas ativas
-[FIX] KEYWORDS limpas (sem espaços extras) + matching por scoring
-[NEW] Fallback GNews API quando RSS não retorna resultados
-[NEW] Debug logging detalhado para diagnóstico de filtragem
-[FIX] Sintaxe f-strings e logging.getLogger(__name__)
+CORREÇÕES v4.1:
+[NEW] Cache em disco (.gemini_cache/) para evitar chamadas duplicadas
+[NEW] Backoff exponencial com jitter (30s→60s→120s + aleatório)
+[NEW] MAX_POSTS dinâmico: 1 no free tier, 3 se tiver API key paga
+[NEW] Graceful exit: não falha o workflow se cota acabar
+[NEW] Log estruturado para monitoramento de custos
 """
 import os
 import re
@@ -41,53 +41,43 @@ log = logging.getLogger(__name__)
 # ─────────────────────────────────────────────
 # CONFIGURAÇÕES
 # ─────────────────────────────────────────────
-
-# ✅ FEEDS CORRIGIDOS E TESTADOS (v4.2)
 RSS_FEEDS = [
-    "https://www.infomoney.com.br/feed/",                    # ✅ Ativo
-    "https://www.seucreditodigital.com.br/feed/",            # ✅ Ativo
-    "https://exame.com/feed/",                               # ✅ Substitui Valor Globo
-    "https://www.moneytimes.com.br/feed/",                   # ✅ Ativo    "https://www.sebrae.com.br/sites/PortalSebrae/rss",      # ✅ Substitui Contabeis (MEI)
-    "https://br.investing.com/rss/news.rss",                 # ✅ Backup internacional
+    "https://www.infomoney.com.br/feed/",
+    "https://www.seucreditodigital.com.br/feed/",
+    "https://valor.globo.com/rss/financas",
+    "https://www.moneytimes.com.br/feed/",
+    "https://www.contabeis.com.br/feed/",
 ]
 
-# ✅ KEYWORDS LIMPAS + ABORDAGEM HÍBRIDA (scoring)
-KEYWORDS_PRIMARY = [
-    "cartão de crédito", "cartao de credito",
-    "mei", "microempreendedor",
-    "empréstimo", "emprestimo",
-    "financiamento", "limite de crédito", "limite de credito",
-    "fintechs", "conta pj", "crédito empresarial", "credito empresarial",
+KEYWORDS = [
+    "cartão de crédito ", "cartao de credito ",
+    "mei ", "microempreendedor ",
+    "empréstimo ", "emprestimo ",
+    "financiamento ", "limite de crédito ",
+    "fintechs ", "conta pj ", "crédito empresarial ",
 ]
-
-KEYWORDS_SECONDARY = [
-    "juros", "taxa", "investimento", "renda", "imposto", "cnpj",
-    "cashback", "anuidade", "negativado", "score", "finanças",
-]
-
-# Threshold de relevância: itens precisam de score >= 1.5 para serem aceitos
-RELEVANCE_THRESHOLD = 1.5
 
 CONTENT_DIR    = Path("content/posts")
 HISTORICO_FILE = Path("historico.txt")
-CACHE_DIR      = Path(".gemini_cache")
+CACHE_DIR      = Path(".gemini_cache")  # [NEW] Cache em disco
 
 # [NEW] Detecta se está em free tier pela variável de ambiente
 IS_FREE_TIER = os.environ.get("GEMINI_TIER", "free").lower() == "free"
 MAX_POSTS    = 1 if IS_FREE_TIER else 3
 
 # ── Delays ──
-API_DELAY    = 30 if IS_FREE_TIER else 15
+API_DELAY    = 30 if IS_FREE_TIER else 15  # Mais conservador no free tier
 PEXELS_DELAY = 2
+
 GEMINI_MODEL          = "gemini-2.0-flash"
 GEMINI_MAX_TENTATIVAS = 3
 
 # ── Pexels ──
 PEXELS_QUERY_MAP = {
-    "Cartão de Crédito": "credit card business finance",
-    "MEI": "small business entrepreneur",
-    "Empréstimos": "bank loan money finance",
-    "Finanças": "personal finance investment money",
+    "Cartão de Crédito ": "credit card business finance ",
+    "MEI ":                "small business entrepreneur ",
+    "Empréstimos ":        "bank loan money finance ",
+    "Finanças ":           "personal finance investment money ",
 }
 
 PEXELS_FALLBACK = {
@@ -96,14 +86,15 @@ PEXELS_FALLBACK = {
 }
 
 PEXELS_USER_AGENT = (
-    "Mozilla/5.0 (compatible; FinaceProBot/4.2; "    "+https://portalrapnacional.github.io/FinacePro/)"
+    "Mozilla/5.0 (compatible; FinaceProBot/4.1; "
+    "+https://portalrapnacional.github.io/FinacePro/)"
 )
 
 KEYWORD_PRIMARIA = {
-    "Cartão de Crédito": "cartão de crédito para MEI",
-    "MEI": "MEI microempreendedor individual",
-    "Empréstimos": "empréstimo para MEI",
-    "Finanças": "educação financeira para empreendedores",
+    "Cartão de Crédito ": "cartão de crédito para MEI ",
+    "MEI ":                "MEI microempreendedor individual ",
+    "Empréstimos ":        "empréstimo para MEI ",
+    "Finanças ":           "educação financeira para empreendedores ",
 }
 
 # ─────────────────────────────────────────────
@@ -146,122 +137,31 @@ def _save_to_cache(prompt: str, content: str, titulo: str) -> None:
         log.info(f"💾 Cache SAVE: {titulo[:50]}...")
     except Exception as e:
         log.warning(f"⚠️ Erro ao salvar cache: {e}")
-# ─────────────────────────────────────────────
-# [NEW] FUNÇÃO DE RELEVÂNCIA POR SCORING
-# ─────────────────────────────────────────────
-def calcular_relevancia(titulo: str, descricao: str = "") -> float:
-    """
-    Calcula score de relevância baseado em keywords primárias e secundárias.
-    Retorna float: score total do item.
-    """
-    texto = f"{titulo} {descricao}".lower()
-    score = 0.0
-    
-    # Keywords primárias valem 1.0 ponto cada
-    for kw in KEYWORDS_PRIMARY:
-        if kw in texto:
-            score += 1.0
-            log.debug(f"  🔹 +1.0 por '{kw}'")
-    
-    # Keywords secundárias valem 0.5 ponto cada
-    for kw in KEYWORDS_SECONDARY:
-        if kw in texto:
-            score += 0.5
-            log.debug(f"  🔹 +0.5 por '{kw}'")
-    
-    return score
 
 # ─────────────────────────────────────────────
-# [NEW] FALLBACK GNEWS API
+# MÓDULO 1 — SCRAPER RSS
 # ─────────────────────────────────────────────
-def buscar_noticias_gnews(query: str = "finanças MEI cartão crédito Brasil", max_results: int = 10) -> list:
-    """Fallback: busca notícias via GNews API quando RSS falha."""
-    api_key = os.environ.get("GNEWS_API_KEY", "").strip()
-    if not api_key:
-        log.warning("⚠️ GNEWS_API_KEY não configurada. Pulando fallback GNews.")
-        return []
-    
-    url = "https://gnews.io/api/v4/search"
-    params = {
-        "q": query,
-        "lang": "pt",
-        "country": "br",
-        "category": "business",
-        "apikey": api_key,
-        "max": max_results
-    }
-    
-    try:
-        query_string = urllib.parse.urlencode(params)
-        endpoint = f"{url}?{query_string}"
-        req = urllib.request.Request(endpoint, headers={"User-Agent": PEXELS_USER_AGENT})        
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode())
-        
-        artigos = data.get("articles", [])
-        log.info(f"📡 GNews: {len(artigos)} artigos encontrados")
-        
-        resultados = []
-        for item in artigos:
-            titulo = item.get("title", "").strip()
-            link = item.get("url", "").strip()
-            desc = item.get("description", "")
-            
-            if not titulo or not link:
-                continue
-            
-            # Aplica filtro de relevância também no fallback
-            if calcular_relevancia(titulo, desc) >= RELEVANCE_THRESHOLD:
-                resultados.append({
-                    "titulo": titulo,
-                    "link": link,
-                    "fonte": item.get("source", {}).get("name", "GNews"),
-                    "descricao": desc
-                })
-                log.info(f"   ✅ GNews: {titulo[:70]}")
-        
-        return resultados
-        
-    except Exception as e:
-        log.error(f"❌ Erro no fallback GNews: {e}")
-        return []
-
-# ─────────────────────────────────────────────
-# MÓDULO 1 — SCRAPER RSS (v4.2: scoring + debug)
-# ─────────────────────────────────────────────
-def buscar_noticias(feeds: list) -> list:
+def buscar_noticias(feeds: list, keywords: list) -> list:
     encontradas = []
-    
     for url in feeds:
         log.info(f"📡 Feed: {url}")
         try:
             feed = feedparser.parse(url)
             for entry in feed.entries:
                 titulo = entry.get("title", "").strip()
-                link = entry.get("link", "").strip()
-                descricao = entry.get("description", entry.get("summary", ""))
-                
+                link   = entry.get("link", "").strip()
                 if not titulo or not link:
                     continue
-                                # Debug: mostra score calculado
-                score = calcular_relevancia(titulo, descricao)
-                log.debug(f"  📊 Score '{titulo[:40]}...': {score}")
-                
-                if score >= RELEVANCE_THRESHOLD:
+                if any(kw in titulo.lower() for kw in keywords):
                     encontradas.append({
                         "titulo": titulo,
-                        "link": link,
-                        "fonte": feed.feed.get("title", url),
-                        "descricao": descricao
+                        "link":   link,
+                        "fonte":  feed.feed.get("title", url),
                     })
                     log.info(f"   ✅ {titulo[:70]}")
-                else:
-                    log.debug(f"   ❌ Score {score} < {RELEVANCE_THRESHOLD} — descartado")
-                    
         except Exception as e:
             log.error(f"❌ Erro no feed {url}: {e}")
-    
-    log.info(f"📊 Total relevante (RSS): {len(encontradas)}")
+    log.info(f"📊 Total relevante: {len(encontradas)}")
     return encontradas
 
 # ─────────────────────────────────────────────
@@ -292,16 +192,19 @@ def filtrar_novas(noticias: list, historico: set) -> list:
     return novas
 
 # ─────────────────────────────────────────────
-# MÓDULO 3 — IMAGENS (PEXELS API)# ─────────────────────────────────────────────
+# MÓDULO 3 — IMAGENS (PEXELS API)
+# ─────────────────────────────────────────────
 def buscar_imagem_pexels(categoria: str) -> dict:
     api_key = os.environ.get("PEXELS_API_KEY", "").strip()
     if not api_key:
         log.warning("⚠️ PEXELS_API_KEY ausente. Usando imagem fallback.")
         return PEXELS_FALLBACK
-    
-    query = PEXELS_QUERY_MAP.get(categoria, PEXELS_QUERY_MAP["Finanças"])
+
+    query = PEXELS_QUERY_MAP.get(categoria, PEXELS_QUERY_MAP["Finanças "])
     query_encoded = urllib.parse.quote(query)
-    endpoint = f"https://api.pexels.com/v1/search?query={query_encoded}&per_page=5&orientation=landscape"
+    endpoint = (
+        f"https://api.pexels.com/v1/search?query={query_encoded}&per_page=5&orientation=landscape"
+    )
 
     try:
         req = urllib.request.Request(
@@ -334,14 +237,15 @@ def buscar_imagem_pexels(categoria: str) -> dict:
         return PEXELS_FALLBACK
 
 # ─────────────────────────────────────────────
-# MÓDULO 4 — IA GEMINI [v4.2: CACHE + BACKOFF INTELIGENTE]
+# MÓDULO 4 — IA GEMINI [v4.1: CACHE + BACKOFF INTELIGENTE]
 # ─────────────────────────────────────────────
 def configurar_gemini():
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key:
         log.critical("❌ GEMINI_API_KEY não encontrada!")
         sys.exit(1)
-    client = genai.Client(api_key=api_key)    tier = "PAGO" if not IS_FREE_TIER else "FREE"
+    client = genai.Client(api_key=api_key)
+    tier = "PAGO" if not IS_FREE_TIER else "FREE"
     log.info(f"🤖 Gemini OK. Modelo: {GEMINI_MODEL} | Tier: {tier} | Max posts: {MAX_POSTS}")
     return client
 
@@ -349,7 +253,7 @@ def gerar_artigo(client, titulo: str, fonte: str, categoria: str) -> Optional[st
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     ano_atual = datetime.now().year
     kw_primaria = KEYWORD_PRIMARIA.get(categoria, "finanças para MEI")
-    
+
     prompt = f"""Você é jornalista financeiro sênior especializado em MEI e crédito empresarial no Brasil, com 15 anos de experiência. Escreva para o FinacePro, portal de referência em finanças para microempreendedores.
 NOTÍCIA BASE: "{titulo}" (fonte: {fonte})
 KEYWORD PRIMÁRIA: "{kw_primaria}"
@@ -390,7 +294,8 @@ P: Como aumentar o limite de crédito sendo MEI?
 R: [2-3 frases com passos práticos verificáveis]
 P: Conta PJ ou conta MEI: qual é melhor para conseguir crédito?
 R: [2-3 frases com comparação direta]
-Conteúdo produzido pelo Conselho Editorial FinacePro em {data_hoje}. As informações têm caráter educativo. Consulte um especialista financeiro antes de contratar qualquer produto de crédito.═══ REGRAS ABSOLUTAS ═══
+Conteúdo produzido pelo Conselho Editorial FinacePro em {data_hoje}. As informações têm caráter educativo. Consulte um especialista financeiro antes de contratar qualquer produto de crédito.
+═══ REGRAS ABSOLUTAS ═══
 Português do Brasil, linguagem acessível (nível ensino médio)
 "{kw_primaria}" aparece 4 a 6 vezes de forma natural no texto
 APENAS dados verificáveis: use "conforme Banco Central", "segundo Sebrae" etc.
@@ -422,7 +327,7 @@ A tabela comparativa é OBRIGATÓRIA e deve ter 4 linhas"""
             if "429" in erro_str or "RESOURCE_EXHAUSTED" in erro_str:
                 # [NEW] Backoff exponencial COM JITTER
                 base_delay = 30 * (2 ** (tentativa - 1))  # 30s, 60s, 120s
-                jitter = random.uniform(0, 15)   # +0-15s aleatório
+                jitter = random.uniform(0, 15)  # +0-15s aleatório
                 espera = int(base_delay + jitter)
                 
                 if tentativa < GEMINI_MAX_TENTATIVAS:
@@ -433,13 +338,14 @@ A tabela comparativa é OBRIGATÓRIA e deve ter 4 linhas"""
                     log.warning(f"⚠️ Cota Gemini esgotada para '{titulo[:50]}'. Post adiado para próxima execução.")
                     return None
             else:
-                log.error(f"❌ Erro Gemini não-retry: {e}")ĥ
+                log.error(f"❌ Erro Gemini não-retry: {e}")
                 return None
-
+    
     log.error(f"❌ Falhou após {GEMINI_MAX_TENTATIVAS} tentativas.")
     return None
 
-# ─────────────────────────────────────────────# MÓDULO 5 — ESTRUTURADOR HUGO
+# ─────────────────────────────────────────────
+# MÓDULO 5 — ESTRUTURADOR HUGO
 # ─────────────────────────────────────────────
 def extrair_h1(md: str) -> str:
     for linha in md.splitlines():
@@ -457,7 +363,7 @@ def extrair_meta_description(md: str, titulo_safe: str) -> str:
 
 def slugify(texto: str) -> str:
     slug = texto.lower()
-    trocas = {"á": "a", "à": "a", "ã": "a", "â": "a", "ä": "a", "é": "e", "ê": "e", "ë": "e", "í": "i", "î": "i", "ó": "o", "ô": "o", "õ": "o", "ö": "o", "ú": "u", "û": "u", "ü": "u", "ç": "c", "ñ": "n"}
+    trocas = {"á":"a","à":"a","ã":"a","â":"a","ä":"a","é":"e","ê":"e","ë":"e","í":"i","î":"i","ó":"o","ô":"o","õ":"o","ö":"o","ú":"u","û":"u","ü":"u","ç":"c","ñ":"n"}
     for orig, sub in trocas.items():
         slug = slug.replace(orig, sub)
     slug = re.sub(r"[^a-z0-9\s-]", " ", slug)
@@ -466,29 +372,30 @@ def slugify(texto: str) -> str:
 
 def detectar_meta(titulo: str) -> tuple:
     tl = titulo.lower()
-    categoria, tags = "Finanças", []
-    if any(k in tl for k in ["cartão", "cartao", "crédito", "credito"]):
-        categoria = "Cartão de Crédito"
-        tags += ["cartão de crédito", "crédito", "finanças pessoais"]
-    if any(k in tl for k in ["mei", "microempreendedor"]):
-        if categoria == "Finanças":
-            categoria = "MEI"
-        tags += ["mei", "empreendedorismo", "pequenos negócios"]
-    if any(k in tl for k in ["empréstimo", "emprestimo", "financiamento"]):
-        if categoria == "Finanças":
-            categoria = "Empréstimos"
-        tags += ["empréstimo", "crédito empresarial"]
+    categoria, tags = "Finanças ", []
+    if any(k in tl for k in ["cartão ", "cartao ", "crédito ", "credito "]):
+        categoria = "Cartão de Crédito "
+        tags += ["cartão de crédito ", "crédito ", "finanças pessoais "]
+    if any(k in tl for k in ["mei ", "microempreendedor "]):
+        if categoria == "Finanças ":
+            categoria = "MEI "
+        tags += ["mei ", "empreendedorismo ", "pequenos negócios "]
+    if any(k in tl for k in ["empréstimo ", "emprestimo ", "financiamento "]):
+        if categoria == "Finanças ":
+            categoria = "Empréstimos "
+        tags += ["empréstimo ", "crédito empresarial "]
     if not tags:
-        tags = ["finanças", "dinheiro", "brasil"]
+        tags = ["finanças ", "dinheiro ", "brasil "]
     return categoria, list(dict.fromkeys(tags))
 
 def front_matter(titulo: str, categoria: str, tags: list, img: dict, meta_desc: str) -> str:
     data = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-    tags_yaml = "\n  ".join(f'  - "{t}"' for t in tags)
+    tags_yaml = "\n ".join(f'  - "{t}"' for t in tags)
     titulo_safe = titulo.replace('"', "'")
     alt_safe = img["alt"].replace('"', "'")
     desc_safe = meta_desc.replace('"', "'")
-    kw_inline = ", ".join(tags[:5])    return (
+    kw_inline = ", ".join(tags[:5])
+    return (
         f'---\n'
         f'title: "{titulo_safe}"\n'
         f'date: {data}\n'
@@ -538,27 +445,22 @@ def salvar_post(conteudo_md: str, pasta: Path, img: dict) -> Optional[Path]:
     except Exception as e:
         log.error(f"❌ Erro ao salvar post: {e}")
         return None
+
 # ─────────────────────────────────────────────
-# ORQUESTRADOR PRINCIPAL (v4.2: fallback GNews + debug)
+# ORQUESTRADOR PRINCIPAL
 # ─────────────────────────────────────────────
 def main() -> None:
     log.info("=" * 60)
-    log.info("🏦 BLOG AUTOMATOR v4.2 — Cartões de Crédito & MEI")
+    log.info("🏦 BLOG AUTOMATOR v4.1 — Cartões de Crédito & MEI")
     log.info(f"📊 Tier: {'PAGO (3 posts)' if not IS_FREE_TIER else 'FREE (1 post)'}")
     log.info("=" * 60)
     
     client = configurar_gemini()
 
     log.info("\n📡 [1/4] Buscando notícias RSS...")
-    noticias = buscar_noticias(RSS_FEEDS)
-    
-    # [NEW] Fallback GNews se RSS não retornar resultados
+    noticias = buscar_noticias(RSS_FEEDS, KEYWORDS)
     if not noticias:
-        log.warning("⚠️ Nenhum resultado relevante nos feeds RSS. Tentando fallback GNews...")
-        noticias = buscar_noticias_gnews()
-    
-    if not noticias:
-        log.warning("⚠️ Nenhuma notícia encontrada (RSS + GNews). Encerrando graceful.")
+        log.warning("⚠️ Nenhuma notícia encontrada. Encerrando graceful.")
         sys.exit(0)
 
     log.info("\n🔍 [2/4] Filtrando duplicatas...")
@@ -586,7 +488,8 @@ def main() -> None:
         if artigo is None:
             log.warning(f"⚠️ Pulando post: '{noticia['titulo'][:50]}...'")
             continue
-                path = salvar_post(artigo, CONTENT_DIR, img)
+        
+        path = salvar_post(artigo, CONTENT_DIR, img)
         if path:
             salvar_historico(HISTORICO_FILE, noticia["hash"])
             criados += 1
@@ -598,16 +501,16 @@ def main() -> None:
             time.sleep(API_DELAY)
 
     log.info(f"\n🚀 [4/4] Finalizando ({criados} post(s) criado(s))...")
-
+    
     if criados == 0:
         log.warning("⚠️ Nenhum post criado hoje. Workflow concluído sem erros (deploy cancelado intencionalmente).")
+        # [NEW] Exit 0 para não falhar o GitHub Actions quando não há posts
         sys.exit(0)
-
-    log.info("\n" + "= " * 60)
+    
+    log.info("\n" + "=" * 60)
     log.info(f"🎉 CONCLUÍDO! {criados} post(s) gerado(s) e salvo(s).")
     log.info("💡 Dica: Monitore seu uso em https://aistudio.google.com/app/quota")
-    log.info("🔧 Debug: Use LOG_LEVEL=DEBUG para logs detalhados de filtragem")
-    log.info("= " * 60)
+    log.info("=" * 60)
 
 if __name__ == "__main__":
     main()
