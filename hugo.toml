@@ -2,77 +2,66 @@ baseURL = "https://PortalRapNacional.github.io/FinacePro/"
 languageCode = "pt-br"
 title = "FinacePro | Crédito, MEI e Soluções Financeiras"
 theme = "PaperMod"
-paginate = 12
-
+paginate = 12  # ← REMOVA ESTA LINHA
 disableKinds = ["taxonomy", "term"]
 
-# ── CSS customizado: design "Premium" (dourado + preto profundo) ──
 [params]
-  env         = "production"
-  title       = "FinacePro"
-  description = "Guia completo sobre cartões de crédito para MEI, empréstimos e educação financeira."
-  author      = "Conselho Editorial FinacePro"   # E-E-A-T: nome institucional
+env         = "production"
+title       = "FinacePro"
+description = "Guia completo sobre cartões de crédito para MEI, empréstimos e educação financeira."
+author      = "Conselho Editorial FinacePro"
+defaultTheme    = "light"
+disableThemeToggle = true
+ShowReadingTime    = true
+ShowBreadCrumbs    = true
+ShowPostNavLinks   = true
+ShowCodeCopyButtons = true
+ShowShareButtons   = true
+ShowToc            = true
 
-  # Tema sempre claro (melhor legibilidade e CPM de anúncios)
-  defaultTheme    = "light"
-  disableThemeToggle = true
+[params.cover]
+linkFullImages = true
+responsiveImages = true
 
-  # Funcionalidades
-  ShowReadingTime    = true
-  ShowBreadCrumbs    = true
-  ShowPostNavLinks   = true
-  ShowCodeCopyButtons = true
-  ShowShareButtons   = true
-  ShowToc            = true   # Índice automático — aumenta tempo na página
+[params.homeInfoParams]
+Title   = "💰 Inteligência Financeira e Crédito para MEI"
+Content = "As melhores análises de cartões, crédito empresarial e dicas para organizar as finanças do seu negócio."
 
-  # Imagem de capa nas listagens (exibe thumbnail do cover de cada post)
-  [params.cover]
-    linkFullImages = true
-    responsiveImages = true
-
-  # Hero da home page
-  [params.homeInfoParams]
-    Title   = "💰 Inteligência Financeira e Crédito para MEI"
-    Content = "As melhores análises de cartões, crédito empresarial e dicas para organizar as finanças do seu negócio."
-
-  # ── DESIGN PREMIUM: variáveis CSS injetadas via hugo.toml ──
-  # O tema PaperMod lê `[params.customCSS]` ou você pode criar
-  # assets/css/extended/custom.css — ver arquivo custom.css gerado.
-  # Estas variáveis documentam as escolhas de design:
-  #   Preto Profundo  : #111111  (títulos, texto principal)
-  #   Dourado Nobre   : #C5A059  (links, botões de ação, destaques)
-  #   Fundo Creme     : #FAFAF8  (background — mais suave que branco puro)
-  #   Cinza Elegante  : #555555  (texto secundário, metadados)
-
-  # SEO e Social
-  [[params.socialIcons]]
-    name = "email"
-    url  = "mailto:contato@finacepro.com"
+[[params.socialIcons]]
+name = "email"
+url  = "mailto:contato@finacepro.com"
 
 [build]
-  publishResources = true
-  renderDrafts     = true
-  renderFuture     = true
-  renderExpired    = true
+publishResources = true
+renderDrafts     = true
+renderFuture     = true
+renderExpired    = true
 
-# ── Menu focado nos nichos de alto CPM ──
 [[menu.main]]
-  name   = "💳 Cartões"
-  url    = "/posts/"
-  weight = 10
+name   = "💳 Cartões "
+url    = "/posts/"
+weight = 10
+
 [[menu.main]]
-  name   = "🏢 MEI"
-  url    = "/posts/"
-  weight = 20
+name   = "🏢 MEI "
+url    = "/posts/"
+weight = 20
+
 [[menu.main]]
-  name   = "📈 Empréstimos"
-  url    = "/posts/"
-  weight = 30
+name   = "📈 Empréstimos "
+url    = "/posts/"
+weight = 30
+
 [[menu.main]]
-  name   = "Sobre"
-  url    = "/about"
-  weight = 40
+name   = "Sobre "
+url    = "/about"
+weight = 40
+
 [[menu.main]]
-  name   = "Privacidade"
-  url    = "/privacy"
-  weight = 50
+name   = "Privacidade "
+url    = "/privacy"
+weight = 50
+
+# ✅ CORREÇÃO: Substitui "paginate = 12" pela sintaxe compatível com Hugo 0.146+
+[pagination]
+pagerSize = 12
