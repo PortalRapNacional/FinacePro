@@ -2,14 +2,17 @@ baseURL = "https://PortalRapNacional.github.io/FinacePro/"
 languageCode = "pt-br"
 title = "FinacePro | Crédito, MEI e Soluções Financeiras"
 theme = "PaperMod"
-paginate = 12  # ← REMOVA ESTA LINHA
 disableKinds = ["taxonomy", "term"]
+
+# ✅ CORREÇÃO OBRIGATÓRIA: Substitui "paginate = 12"
+[pagination]
+pagerSize = 12
 
 [params]
 env         = "production"
 title       = "FinacePro"
 description = "Guia completo sobre cartões de crédito para MEI, empréstimos e educação financeira."
-author      = "Conselho Editorial FinacePro"
+author      = "Conselho Editorial FinacePro"   # E-E-A-T: nome institucional
 defaultTheme    = "light"
 disableThemeToggle = true
 ShowReadingTime    = true
@@ -17,7 +20,7 @@ ShowBreadCrumbs    = true
 ShowPostNavLinks   = true
 ShowCodeCopyButtons = true
 ShowShareButtons   = true
-ShowToc            = true
+ShowToc            = true   # Índice automático — aumenta tempo na página
 
 [params.cover]
 linkFullImages = true
@@ -26,6 +29,9 @@ responsiveImages = true
 [params.homeInfoParams]
 Title   = "💰 Inteligência Financeira e Crédito para MEI"
 Content = "As melhores análises de cartões, crédito empresarial e dicas para organizar as finanças do seu negócio."
+
+# DESIGN PREMIUM: variáveis CSS para assets/css/extended/custom.css
+# Preto Profundo: #111111 | Dourado Nobre: #C5A059 | Fundo Creme: #FAFAF8
 
 [[params.socialIcons]]
 name = "email"
@@ -38,30 +44,26 @@ renderFuture     = true
 renderExpired    = true
 
 [[menu.main]]
-name   = "💳 Cartões "
+name   = "💳 Cartões"
 url    = "/posts/"
 weight = 10
 
 [[menu.main]]
-name   = "🏢 MEI "
+name   = "🏢 MEI"
 url    = "/posts/"
 weight = 20
 
 [[menu.main]]
-name   = "📈 Empréstimos "
+name   = "📈 Empréstimos"
 url    = "/posts/"
 weight = 30
 
 [[menu.main]]
-name   = "Sobre "
+name   = "Sobre"
 url    = "/about"
 weight = 40
 
 [[menu.main]]
-name   = "Privacidade "
+name   = "Privacidade"
 url    = "/privacy"
 weight = 50
-
-# ✅ CORREÇÃO: Substitui "paginate = 12" pela sintaxe compatível com Hugo 0.146+
-[pagination]
-pagerSize = 12
