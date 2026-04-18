@@ -2,3 +2,14 @@
 categories
 tags
 public/
+# Cache da IA
+.gemini_cache/
+*.pyc
+__pycache__/
+
+# Logs locais
+*.log
+logs/
+
+# Ambiente local
+.env
