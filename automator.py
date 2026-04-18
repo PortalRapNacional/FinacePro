@@ -1,20 +1,10 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║         BLOG AUTOMATOR v4.4 — Cartões de Crédito & MEI          ║
-║   Stack: Hugo + GitHub Pages + Gemini AI + Pexels + Actions     ║
-║   [FIX v4.4] Sintaxe Python corrigida + Keywords sem espaço     ║
+║         BLOG AUTOMATOR v4.5 — Cartões de Crédito & MEI          ║
+║   [FIX v4.5] Anti-429: 1 post/dia free + cache + detecção quota ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
-import os
-import re
-import sys
-import time
-import hashlib
-import logging
-import urllib.request
-import urllib.parse
-import urllib.error
-import json
+import os, re, sys, time, hashlib, logging, json, urllib.request, urllib.parse, urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -24,11 +14,7 @@ from google import genai
 # ─────────────────────────────────────────────
 # LOGGING
 # ─────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", handlers=[logging.StreamHandler(sys.stdout)])
 log = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────
@@ -45,55 +31,71 @@ RSS_FEEDS = [
 
 # ✅ CORREÇÃO: Keywords SEM espaço no final
 KEYWORDS = [
-    "cartão de crédito", "cartao de credito",
-    "mei", "microempreendedor",
-    "empréstimo", "emprestimo",
-    "financiamento", "limite de crédito", "limite de credito",
+    "cartão de crédito", "cartao de credito", "mei", "microempreendedor",
+    "empréstimo", "emprestimo", "financiamento", "limite de crédito", "limite de credito",
     "fintechs", "conta pj", "crédito empresarial", "credito empresarial",
-    "cartão mei", "crédito pj", "taxa de juros",
-    "score serasa", "antecipação recebíveis", "liberação crédito",
-    "aprovação cartão", "negociação dívida", "serasa limpa nome",
-    "conta digital pj", "saque aniversário", "juros rotativo",
+    "cartão mei", "crédito pj", "taxa de juros", "score serasa",
+    "antecipação recebíveis", "liberação crédito", "aprovação cartão",
 ]
 
-CONTENT_DIR    = Path("content/posts")
+CONTENT_DIR = Path("content/posts")
 HISTORICO_FILE = Path("historico.txt")
-MAX_POSTS      = 3
+CACHE_DIR = Path(".gemini_cache")
+CACHE_DIR.mkdir(exist_ok=True)
 
-API_DELAY    = 30
+# ✅ DETECTA FREE TIER E LIMITA PARA 1 POST/DIA
+IS_FREE_TIER = os.environ.get("GEMINI_TIER", "free").lower() == "free"
+MAX_POSTS = 1 if IS_FREE_TIER else 3
+
+API_DELAY = 45 if IS_FREE_TIER else 20  # Mais conservador no free tier
 PEXELS_DELAY = 2
+GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MAX_TENTATIVAS = 2 if IS_FREE_TIER else 3  # Menos tentativas no free para não gastar quota
 
-GEMINI_MODEL          = "gemini-2.0-flash"
-GEMINI_MAX_TENTATIVAS = 3
-
-# ✅ CORREÇÃO: Queries Pexels SEM espaço no final
+# ✅ CORREÇÃO: Queries Pexels SEM espaço
 PEXELS_QUERY_MAP = {
     "Cartão de Crédito": "credit card business finance",
-    "MEI":                "small business entrepreneur",
-    "Empréstimos":        "bank loan money finance",
-    "Finanças":           "personal finance investment money",
+    "MEI": "small business entrepreneur",
+    "Empréstimos": "bank loan money finance",
+    "Finanças": "personal finance investment money",
 }
-
-PEXELS_FALLBACK = {
-    "url": "https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg",
-    "alt": "Finanças e crédito para empreendedores brasileiros",
-}
-
-PEXELS_USER_AGENT = (
-    "Mozilla/5.0 (compatible; FinaceProBot/4.4; "
-    "+https://portalrapnacional.github.io/FinacePro/)"
-)
-
-# ✅ CORREÇÃO: Keywords primárias SEM espaço no final
+PEXELS_FALLBACK = {"url": "https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg", "alt": "Finanças e crédito para empreendedores brasileiros"}
+PEXELS_USER_AGENT = "Mozilla/5.0 (compatible; FinaceProBot/4.5; +https://portalrapnacional.github.io/FinacePro/)"
 KEYWORD_PRIMARIA = {
     "Cartão de Crédito": "cartão de crédito para MEI",
-    "MEI":                "MEI microempreendedor individual",
-    "Empréstimos":        "empréstimo para MEI",
-    "Finanças":           "educação financeira para empreendedores",
+    "MEI": "MEI microempreendedor individual",
+    "Empréstimos": "empréstimo para MEI",
+    "Finanças": "educação financeira para empreendedores",
 }
 
 # ─────────────────────────────────────────────
-# MÓDULO 1 — SCRAPER RSS
+# CACHE EM DISCO (evita chamadas duplicadas)
+# ─────────────────────────────────────────────
+def _cache_key(prompt: str) -> str:
+    return hashlib.md5(prompt.encode("utf-8")).hexdigest()
+
+def _load_cache(prompt: str) -> Optional[str]:
+    f = CACHE_DIR / f"{_cache_key(prompt)}.json"
+    if f.exists():
+        try:
+            with open(f, "r", encoding="utf-8") as file:
+                data = json.load(file)
+            if time.time() - data.get("ts", 0) < 7*24*3600:  # 7 dias
+                log.info(f"♻️ Cache HIT: {data.get('titulo','')[:40]}...")
+                return data["content"]
+        except: pass
+    return None
+
+def _save_cache(prompt: str, content: str, titulo: str):
+    try:
+        f = CACHE_DIR / f"{_cache_key(prompt)}.json"
+        with open(f, "w", encoding="utf-8") as file:
+            json.dump({"content": content, "titulo": titulo, "ts": time.time()}, file, ensure_ascii=False)
+        log.info(f"💾 Cache SAVE: {titulo[:40]}...")
+    except: pass
+
+# ─────────────────────────────────────────────
+# MÓDULO RSS
 # ─────────────────────────────────────────────
 def buscar_noticias(feeds: list, keywords: list) -> list:
     encontradas = []
@@ -103,347 +105,253 @@ def buscar_noticias(feeds: list, keywords: list) -> list:
             feed = feedparser.parse(url)
             for entry in feed.entries:
                 titulo = entry.get("title", "").strip()
-                link   = entry.get("link", "").strip()
-                if not titulo or not link:
-                    continue
+                link = entry.get("link", "").strip()
+                if not titulo or not link: continue
                 if any(kw in titulo.lower() for kw in keywords):
-                    encontradas.append({
-                        "titulo": titulo,
-                        "link":   link,
-                        "fonte":  feed.feed.get("title", url),
-                    })
-                    log.info(f"   ✅ {titulo[:70]}")
+                    encontradas.append({"titulo": titulo, "link": link, "fonte": feed.feed.get("title", url)})
+                    log.info(f"   ✅ {titulo[:60]}")
         except Exception as e:
             log.error(f"❌ Erro no feed {url}: {e}")
     log.info(f"📊 Total relevante: {len(encontradas)}")
     return encontradas
 
-# ─────────────────────────────────────────────
-# MÓDULO 2 — DEDUPLICAÇÃO
-# ─────────────────────────────────────────────
-def _hash(link: str) -> str:
-    return hashlib.md5(link.encode()).hexdigest()
-
+def _hash(link: str) -> str: return hashlib.md5(link.encode()).hexdigest()
 def carregar_historico(arq: Path) -> set:
-    if not arq.exists():
-        arq.touch()
-        return set()
-    with open(arq, "r", encoding="utf-8") as f:
-        return {l.strip() for l in f if l.strip()}
-
-def salvar_historico(arq: Path, h: str) -> None:
-    with open(arq, "a", encoding="utf-8") as f:
-        f.write(h + "\n")
-
+    if not arq.exists(): arq.touch(); return set()
+    with open(arq, "r", encoding="utf-8") as f: return {l.strip() for l in f if l.strip()}
+def salvar_historico(arq: Path, h: str):
+    with open(arq, "a", encoding="utf-8") as f: f.write(h + "\n")
 def filtrar_novas(noticias: list, historico: set) -> list:
     novas = []
     for n in noticias:
         h = _hash(n["link"])
-        if h not in historico:
-            n["hash"] = h
-            novas.append(n)
+        if h not in historico: n["hash"] = h; novas.append(n)
     log.info(f"🆕 Novas após dedup: {len(novas)}")
     return novas
 
 # ─────────────────────────────────────────────
-# MÓDULO 3 — IMAGENS (PEXELS API)
+# MÓDULO PEXELS
 # ─────────────────────────────────────────────
 def buscar_imagem_pexels(categoria: str) -> dict:
     api_key = os.environ.get("PEXELS_API_KEY", "").strip()
     if not api_key:
-        log.warning("⚠️ PEXELS_API_KEY ausente. Usando imagem fallback.")
+        log.warning("⚠️ PEXELS_API_KEY ausente. Fallback ativo.")
         return PEXELS_FALLBACK
-
     query = PEXELS_QUERY_MAP.get(categoria, PEXELS_QUERY_MAP["Finanças"])
-    query_encoded = urllib.parse.quote(query)
-    endpoint = (
-        f"https://api.pexels.com/v1/search?query={query_encoded}&per_page=5&orientation=landscape"
-    )
-
+    endpoint = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=3&orientation=landscape"
     try:
-        req = urllib.request.Request(
-            endpoint,
-            headers={
-                "Authorization": api_key,
-                "User-Agent": PEXELS_USER_AGENT,
-            },
-        )
+        req = urllib.request.Request(endpoint, headers={"Authorization": api_key, "User-Agent": PEXELS_USER_AGENT})
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode())
-
         fotos = data.get("photos", [])
-        if not fotos:
-            log.warning(f"⚠️ Sem fotos Pexels para '{query}'. Fallback ativo.")
-            return PEXELS_FALLBACK
-
+        if not fotos: return PEXELS_FALLBACK
         foto = fotos[0]
-        img_url = foto["src"].get("large2x") or foto["src"]["original"]
-        alt_txt = (foto.get("alt") or f"{categoria} — FinacePro").strip()
-
-        log.info(f"🖼️ Pexels OK: {img_url[:70]}...")
-        return {"url": img_url, "alt": alt_txt}
-
-    except urllib.error.HTTPError as e:
-        log.warning(f"⚠️ Pexels HTTP {e.code} {e.reason}. Fallback ativo.")
-        return PEXELS_FALLBACK
+        return {"url": foto["src"].get("large2x") or foto["src"]["original"], "alt": (foto.get("alt") or f"{categoria} — FinacePro").strip()}
     except Exception as e:
         log.warning(f"⚠️ Pexels erro: {e}. Fallback ativo.")
         return PEXELS_FALLBACK
 
 # ─────────────────────────────────────────────
-# MÓDULO 4 — IA GEMINI
+# MÓDULO GEMINI [v4.5: Anti-429 + Cache]
 # ─────────────────────────────────────────────
 def configurar_gemini():
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if not api_key:
-        log.critical("❌ GEMINI_API_KEY não encontrada!")
-        sys.exit(1)
+    if not api_key: log.critical("❌ GEMINI_API_KEY não encontrada!"); sys.exit(1)
     client = genai.Client(api_key=api_key)
-    log.info(f"🤖 Gemini OK. Modelo: {GEMINI_MODEL}")
+    log.info(f"🤖 Gemini OK. Modelo: {GEMINI_MODEL} | Tier: {'FREE (1 post/dia)' if IS_FREE_TIER else 'PAGO'}")
     return client
 
 def gerar_artigo(client, titulo: str, fonte: str, categoria: str) -> Optional[str]:
-    data_hoje   = datetime.now().strftime("%d/%m/%Y")
-    ano_atual   = datetime.now().year
-    kw_primaria = KEYWORD_PRIMARIA.get(categoria, "finanças para MEI")
-
-    prompt = f"""Você é jornalista financeiro sênior especializado em MEI e crédito empresarial no Brasil, com 15 anos de experiência. Escreva para o FinacePro, portal de referência em finanças para microempreendedores.
-NOTÍCIA BASE: "{titulo}" (fonte: {fonte})
-KEYWORD PRIMÁRIA: "{kw_primaria}"
-DATA: {data_hoje}
-═══ ESTRUTURA OBRIGATÓRIA (Markdown) ═══
-[Título com número + benefício + keyword | ex: "7 Melhores Cartões de Crédito para MEI com Limite Alto em {ano_atual}"]
-Meta description: [Exatamente 150-160 caracteres: keyword + benefício principal + CTA implícito.]
-Tempo de leitura: X minutos | Atualizado em: {data_hoje}
-Por Que Todo MEI Precisa Saber Disso Agora
-[2 parágrafos FORTES. Abra com dado real do Banco Central, IBGE ou Sebrae. Use "{kw_primaria}" na primeira frase.]
-[Subtítulo 1 — Benefício concreto em números]
-[3 parágrafos. Inclua comparativo de taxas, percentual de economia e critérios de aprovação.]
-[Subtítulo 2 — Como o MEI conquista isso na prática]
-Siga estes passos:
-[Ação 1]: [explicação direta]
-[Ação 2]: [explicação direta]
-[Ação 3]: [explicação direta]
-[Ação 4]: [explicação direta]
-[Ação 5]: [explicação direta]
-[1 parágrafo de contexto com dica prática.]
-[Subtítulo 3 — Os 3 erros que custam dinheiro ao MEI]
-[3 parágrafos. Mencione fintechs reais: Nubank PJ, Inter PJ, C6 Bank, Mercado Pago, Itaú Empresas, Bradesco MEI.]
-Comparativo: Melhores Opções para MEI em {ano_atual}
-| Instituição | Anuidade | Limite Inicial | Cashback | Melhor Para |
+    data_hoje = datetime.now().strftime("%d/%m/%Y")
+    ano_atual = datetime.now().year
+    kw = KEYWORD_PRIMARIA.get(categoria, "finanças para MEI")
+    prompt = f"""Você é jornalista financeiro sênior especializado em MEI. NOTÍCIA: "{titulo}" (fonte: {fonte}). KEYWORD: "{kw}". DATA: {data_hoje}.
+[ESCREVA EM MARKDOWN]
+# [Título com número + benefício + keyword | ex: "7 Melhores Cartões de Crédito para MEI em {ano_atual}"]
+Meta description: [150-160 caracteres: keyword + benefício + CTA]
+Tempo: X min | Atualizado: {data_hoje}
+## Por Que Todo MEI Precisa Saber Disso
+[2 parágrafos com dado do Banco Central/Sebrae. Use "{kw}" na 1ª frase.]
+## [Benefício em números]
+[3 parágrafos: comparativo de taxas, % de economia, critérios de aprovação.]
+## Como Conquistar na Prática
+1. [Ação]
+2. [Ação]
+3. [Ação]
+4. [Ação]
+5. [Ação]
+## 3 Erros Que Custam Dinheiro
+[3 parágrafos: erro + como evitar + fintech que resolve (Nubank PJ, Inter, C6, Mercado Pago).]
+## Comparativo: Melhores Opções em {ano_atual}
+| Instituição | Anuidade | Limite | Cashback | Melhor Para |
 | --- | --- | --- | --- | --- |
-| [Opção 1] | [valor] | [valor] | [%] | [perfil MEI] |
-| [Opção 2] | [valor] | [valor] | [%] | [perfil MEI] |
-| [Opção 3] | [valor] | [valor] | [%] | [perfil MEI] |
-| [Opção 4] | [valor] | [valor] | [%] | [perfil MEI] |
-Conclusão: Vale a Pena para o Seu Negócio?
-[1 parágrafo direto. Finalize com CTA interno.]
-FAQ — Perguntas Frequentes
-P: Qual o melhor {kw_primaria} em {ano_atual}?
-R: [2-3 frases com dado concreto]
-P: MEI negativado pode conseguir cartão de crédito ou empréstimo?
-R: [2-3 frases com opções reais]
-P: Como aumentar o limite de crédito sendo MEI?
-R: [2-3 frases com passos práticos]
-P: Conta PJ ou conta MEI: qual é melhor para conseguir crédito?
-R: [2-3 frases com comparação direta]
-Conteúdo produzido pelo Conselho Editorial FinacePro em {data_hoje}. As informações têm caráter educativo.
-═══ REGRAS ABSOLUTAS ═══
-Português do Brasil, linguagem acessível
-"{kw_primaria}" aparece 4 a 6 vezes
-APENAS dados verificáveis
-NÃO escreva nada antes do # do título
-Entre 950 e 1.300 palavras
-A tabela comparativa é OBRIGATÓRIA e deve ter 4 linhas"""
+| [Opção 1] | [valor] | [valor] | [%] | [perfil] |
+| [Opção 2] | [valor] | [valor] | [%] | [perfil] |
+| [Opção 3] | [valor] | [valor] | [%] | [perfil] |
+| [Opção 4] | [valor] | [valor] | [%] | [perfil] |
+## Conclusão
+[1 parágrafo direto + CTA interno.]
+## FAQ
+P: Qual o melhor {kw} em {ano_atual}? R: [2-3 frases]
+P: MEI negativado consegue crédito? R: [2-3 frases]
+P: Como aumentar limite sendo MEI? R: [2-3 frases]
+P: Conta PJ ou MEI para crédito? R: [2-3 frases]
+Conteúdo por Conselho Editorial FinacePro em {data_hoje}. Caráter educativo.
+═══ REGRAS ═══
+- Português BR, nível médio
+- "{kw}" aparece 4-6x
+- Apenas dados verificáveis ("conforme Banco Central")
+- Nada antes do # do título
+- 950-1300 palavras
+- Tabela com 4 linhas OBRIGATÓRIA"""
 
-    for tentativa in range(1, GEMINI_MAX_TENTATIVAS + 1):
+    # ✅ VERIFICA CACHE ANTES DE CHAMAR API
+    cached = _load_cache(prompt)
+    if cached: return cached
+
+    for tent in range(1, GEMINI_MAX_TENTATIVAS + 1):
         try:
-            log.info(f"🧠 Tentativa {tentativa}/{GEMINI_MAX_TENTATIVAS}: '{titulo[:55]}...'")
-            response = client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=prompt,
-            )
-            conteudo = response.text.strip()
+            log.info(f"🧠 Tentativa {tent}/{GEMINI_MAX_TENTATIVAS}: '{titulo[:50]}...'")
+            resp = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+            conteudo = resp.text.strip()
             log.info(f"✅ Artigo gerado ({len(conteudo)} chars)")
+            _save_cache(prompt, conteudo, titulo)  # ✅ SALVA NO CACHE
             return conteudo
         except Exception as e:
-            erro_str = str(e)
-            if "429" in erro_str or "RESOURCE_EXHAUSTED" in erro_str:
-                match = re.search(r"retry[_ ]in[_ ](\d+)", erro_str, re.I)
-                espera_api = int(match.group(1)) + 5 if match else None
-                espera_backoff = 60 * (2 ** (tentativa - 1))
-                espera = espera_api or espera_backoff
-                if tentativa < GEMINI_MAX_TENTATIVAS:
-                    log.warning(f"⏳ Cota Gemini (429). Aguardando {espera}s antes da tentativa {tentativa + 1}/{GEMINI_MAX_TENTATIVAS}...")
+            erro = str(e)
+            # ✅ DETECTA SE É COTA DIÁRIA (429 com mensagem específica)
+            if "429" in erro or "RESOURCE_EXHAUSTED" in erro:
+                if IS_FREE_TIER and tent == 1:
+                    # ✅ FREE TIER: após 1 falha, para para não gastar quota à toa
+                    log.warning(f"⚠️ Free tier: cota provavelmente esgotada. Parando para evitar waste.")
+                    return None
+                # PAGO ou nova tentativa: backoff
+                match = re.search(r"retry[_ ]in[_ ](\d+)", erro, re.I)
+                espera = (int(match.group(1)) + 10) if match else (30 * (2 ** (tent-1)))
+                if tent < GEMINI_MAX_TENTATIVAS:
+                    log.warning(f"⏳ Rate limit. Aguardando {espera}s (tent {tent+1}/{GEMINI_MAX_TENTATIVAS})...")
                     time.sleep(espera)
                 else:
-                    log.error("❌ Cota esgotada. Veja: https://ai.dev/rate-limit")
+                    log.error("❌ Cota esgotada. Post adiado para amanhã.")
+                    return None
             else:
-                log.error(f"❌ Erro Gemini não-retriável: {e}")
+                log.error(f"❌ Erro não-retry: {e}")
                 return None
-    log.error(f"❌ Falhou após {GEMINI_MAX_TENTATIVAS} tentativas.")
     return None
 
 # ─────────────────────────────────────────────
-# MÓDULO 5 — ESTRUTURADOR HUGO
+# MÓDULO HUGO
 # ─────────────────────────────────────────────
 def extrair_h1(md: str) -> str:
-    for linha in md.splitlines():
-        if linha.startswith("# "):
-            return linha[2:].strip()
+    for l in md.splitlines():
+        if l.startswith("# "): return l[2:].strip()
     return "Artigo sobre Finanças para MEI"
 
-def extrair_meta_description(md: str, titulo_safe: str) -> str:
-    for linha in md.splitlines():
-        if linha.strip().startswith("Meta description:"):
-            desc = linha.replace("Meta description:", "").strip()
-            if len(desc) > 50:
-                return desc[:160]
-    return f"Guia completo: {titulo_safe[:70]}. Dicas práticas para MEI sobre crédito, cartões e finanças empresariais no Brasil."[:160]
+def extrair_meta(md: str, titulo: str) -> str:
+    for l in md.splitlines():
+        if l.strip().startswith("Meta description:"):
+            d = l.replace("Meta description:", "").strip()
+            if len(d) > 50: return d[:160]
+    return f"Guia: {titulo[:70]}. Dicas para MEI sobre crédito e finanças."[:160]
 
-def slugify(texto: str) -> str:
-    slug = texto.lower()
-    trocas = {"á":"a","à":"a","ã":"a","â":"a","ä":"a","é":"e","ê":"e","ë":"e","í":"i","î":"i","ó":"o","ô":"o","õ":"o","ö":"o","ú":"u","û":"u","ü":"u","ç":"c","ñ":"n"}
-    for orig, sub in trocas.items():
-        slug = slug.replace(orig, sub)
-    slug = re.sub(r"[^a-z0-9\s-]", " ", slug)
-    slug = re.sub(r"[\s_]+", "-", slug).strip("-")
-    return slug[:80]
+def slugify(t: str) -> str:
+    s = t.lower()
+    for a,b in {"á":"a","à":"a","ã":"a","â":"a","é":"e","ê":"e","í":"i","ó":"o","ô":"o","ú":"u","ç":"c"}.items(): s = s.replace(a,b)
+    s = re.sub(r"[^a-z0-9\s-]", " ", s)
+    return re.sub(r"[\s_]+", "-", s).strip("-")[:80]
 
 def detectar_meta(titulo: str) -> tuple:
     tl = titulo.lower()
-    categoria, tags = "Finanças", []
-    if any(k in tl for k in ["cartão", "cartao", "crédito", "credito"]):
-        categoria = "Cartão de Crédito"
-        tags += ["cartão de crédito", "crédito", "finanças pessoais"]
-    if any(k in tl for k in ["mei", "microempreendedor"]):
-        if categoria == "Finanças":
-            categoria = "MEI"
-        tags += ["mei", "empreendedorismo", "pequenos negócios"]
-    if any(k in tl for k in ["empréstimo", "emprestimo", "financiamento"]):
-        if categoria == "Finanças":
-            categoria = "Empréstimos"
-        tags += ["empréstimo", "crédito empresarial"]
-    if not tags:
-        tags = ["finanças", "dinheiro", "brasil"]
-    return categoria, list(dict.fromkeys(tags))
+    cat, tags = "Finanças", []
+    if any(k in tl for k in ["cartão","cartao","crédito","credito"]): cat = "Cartão de Crédito"; tags += ["cartão de crédito","crédito"]
+    if any(k in tl for k in ["mei","microempreendedor"]): 
+        if cat == "Finanças": cat = "MEI"
+        tags += ["mei","empreendedorismo"]
+    if any(k in tl for k in ["empréstimo","emprestimo","financiamento"]):
+        if cat == "Finanças": cat = "Empréstimos"
+        tags += ["empréstimo","crédito empresarial"]
+    return cat, list(dict.fromkeys(tags or ["finanças","brasil"]))
 
-def front_matter(titulo: str, categoria: str, tags: list, img: dict, meta_desc: str) -> str:
+def front_matter(titulo, cat, tags, img, meta):
     data = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-    tags_yaml = "\n ".join(f'  - "{t}"' for t in tags)
-    titulo_safe = titulo.replace('"', "'")
-    alt_safe = img["alt"].replace('"', "'")
-    desc_safe = meta_desc.replace('"', "'")
-    kw_inline = ", ".join(tags[:5])
-    return (
-        f'---\n'
-        f'title: "{titulo_safe}"\n'
-        f'date: {data}\n'
-        f'draft: false\n'
-        f'author: "Conselho Editorial FinacePro"\n'
-        f'categories:\n'
-        f'  - "{categoria}"\n'
-        f'tags:\n'
-        f'{tags_yaml}\n'
-        f'keywords: "{kw_inline}"\n'
-        f'description: "{desc_safe}"\n'
-        f'cover:\n'
-        f'  image: "{img["url"]}"\n'
-        f'  alt: "{alt_safe}"\n'
-        f'  caption: "Crédito: Pexels"\n'
-        f'  relative: false\n'
-        f'  hidden: false\n'
-        f'ShowToc: true\n'
-        f'TocOpen: false\n'
-        f'---\n\n'
-    )
+    tags_y = "\n ".join(f'  - "{t}"' for t in tags)
+    return f'''---
+title: "{titulo.replace('"', "'")}"
+date: {data}
+draft: false
+author: "Conselho Editorial FinacePro"
+categories:
+  - "{cat}"
+tags:
+{tags_y}
+keywords: "{", ".join(tags[:5])}"
+description: "{meta.replace('"', "'")}"
+cover:
+  image: "{img['url']}"
+  alt: "{img['alt'].replace('"', "'")}"
+  caption: "Crédito: Pexels"
+  relative: false
+  hidden: false
+ShowToc: true
+TocOpen: false
+---
+
+'''
 
 def limpar_corpo(md: str) -> str:
-    linhas = []
-    for linha in md.splitlines():
-        if linha.strip().startswith("# "):
-            continue
-        if linha.strip().startswith("Meta description:"):
-            continue
-        linhas.append(linha)
-    return "\n".join(linhas).strip()
+    return "\n".join(l for l in md.splitlines() if not l.strip().startswith("# ") and not l.strip().startswith("Meta description:")).strip()
 
-def salvar_post(conteudo_md: str, pasta: Path, img: dict) -> Optional[Path]:
+def salvar_post(conteudo, pasta, img):
     try:
         pasta.mkdir(parents=True, exist_ok=True)
-        titulo = extrair_h1(conteudo_md)
+        titulo = extrair_h1(conteudo)
         cat, tags = detectar_meta(titulo)
-        titulo_safe = titulo.replace('"', "'")
-        meta_desc = extrair_meta_description(conteudo_md, titulo_safe)
-        fm = front_matter(titulo, cat, tags, img, meta_desc)
-        corpo = limpar_corpo(conteudo_md)
+        fm = front_matter(titulo, cat, tags, img, extrair_meta(conteudo, titulo))
+        corpo = limpar_corpo(conteudo)
         nome = f"{datetime.now().strftime('%Y-%m-%d')}-{slugify(titulo)}.md"
         path = pasta / nome
         path.write_text(fm + corpo, encoding="utf-8")
         log.info(f"💾 Post salvo: {path}")
         return path
     except Exception as e:
-        log.error(f"❌ Erro ao salvar post: {e}")
+        log.error(f"❌ Erro ao salvar: {e}")
         return None
 
 # ─────────────────────────────────────────────
-# ORQUESTRADOR
+# MAIN
 # ─────────────────────────────────────────────
-def main() -> None:
-    log.info("=" * 60)
-    log.info("🏦 BLOG AUTOMATOR v4.4 — Cartões de Crédito & MEI")
-    log.info("=" * 60)
+def main():
+    log.info("="*60)
+    log.info("🏦 BLOG AUTOMATOR v4.5 — Cartões de Crédito & MEI")
+    log.info(f"📊 Tier: {'FREE (1 post/dia)' if IS_FREE_TIER else 'PAGO'}")
+    log.info("="*60)
     
     client = configurar_gemini()
-
     log.info("\n📡 [1/4] Buscando notícias RSS...")
     noticias = buscar_noticias(RSS_FEEDS, KEYWORDS)
-    if not noticias:
-        log.warning("⚠️ Nenhuma notícia encontrada. Encerrando graceful.")
-        sys.exit(0)
+    if not noticias: log.warning("⚠️ Nenhuma notícia. Encerrando."); sys.exit(0)
 
     log.info("\n🔍 [2/4] Filtrando duplicatas...")
     historico = carregar_historico(HISTORICO_FILE)
     novas = filtrar_novas(noticias, historico)
-    if not novas:
-        log.info("✅ Todas as notícias já foram publicadas. Nada a fazer.")
-        sys.exit(0)
+    if not novas: log.info("✅ Todas já publicadas."); sys.exit(0)
 
     log.info(f"\n✍️ [3/4] Gerando posts (máx: {MAX_POSTS})...")
     criados = 0
     for noticia in novas[:MAX_POSTS]:
-        log.info(f"\n{'─' * 55}")
-        categoria, _ = detectar_meta(noticia["titulo"])
-        
-        log.info("🖼️ Buscando imagem no Pexels...")
-        img = buscar_imagem_pexels(categoria)
-        
-        log.info(f"⏳ Pausa {PEXELS_DELAY}s (sincronização Pexels → Gemini)...")
-        time.sleep(PEXELS_DELAY)
-        
-        log.info("🧠 Gerando artigo com Gemini...")
-        artigo = gerar_artigo(client, noticia["titulo"], noticia["fonte"], categoria)
-        
-        if artigo is None:
-            continue
-        
+        log.info(f"\n{'─'*50}")
+        cat, _ = detectar_meta(noticia["titulo"])
+        log.info("🖼️ Buscando imagem..."); img = buscar_imagem_pexels(cat)
+        log.info(f"⏳ Pausa {PEXELS_DELAY}s..."); time.sleep(PEXELS_DELAY)
+        log.info("🧠 Gerando artigo..."); artigo = gerar_artigo(client, noticia["titulo"], noticia["fonte"], cat)
+        if artigo is None: continue
         path = salvar_post(artigo, CONTENT_DIR, img)
-        if path:
-            salvar_historico(HISTORICO_FILE, noticia["hash"])
-            criados += 1
-        
-        if criados < MAX_POSTS:
-            log.info(f"⏳ Pausa {API_DELAY}s entre posts (rate limit Gemini)...")
-            time.sleep(API_DELAY)
+        if path: salvar_historico(HISTORICO_FILE, noticia["hash"]); criados += 1; log.info(f"✅ Post #{criados} criado!")
+        if criados < MAX_POSTS: log.info(f"⏳ Pausa {API_DELAY}s..."); time.sleep(API_DELAY)
 
-    log.info(f"\n🚀 [4/4] Finalizando ({criados} post(s) criado(s))...")
-    if criados == 0:
-        log.warning("⚠️ Nenhum post criado. Workflow concluído sem erros.")
-        sys.exit(0)
-    
-    log.info("\n" + "=" * 60)
-    log.info(f"🎉 CONCLUÍDO! {criados} post(s) gerado(s) e salvo(s).")
-    log.info("=" * 60)
+    log.info(f"\n🚀 [4/4] Finalizando ({criados} post(s))...")
+    if criados == 0: log.warning("⚠️ Nenhum post criado. Workflow OK."); sys.exit(0)
+    log.info(f"\n🎉 CONCLUÍDO! {criados} post(s) salvo(s).")
 
 if __name__ == "__main__":
     main()
