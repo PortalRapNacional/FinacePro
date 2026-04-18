@@ -1,15 +1,9 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║         BLOG AUTOMATOR v4.1 — Cartões de Crédito & MEI          ║
+║         BLOG AUTOMATOR v4.3 — Cartões de Crédito & MEI          ║
 ║   Stack: Hugo + GitHub Pages + Gemini AI + Pexels + Actions     ║
-║   [NOVO] Cache em disco + Backoff exponencial + Fallback Graceful║
+║   [FIX v4.3] Keywords sem espaço + Mais captura de notícias     ║
 ╚══════════════════════════════════════════════════════════════════╝
-CORREÇÕES v4.1:
-[NEW] Cache em disco (.gemini_cache/) para evitar chamadas duplicadas
-[NEW] Backoff exponencial com jitter (30s→60s→120s + aleatório)
-[NEW] MAX_POSTS dinâmico: 1 no free tier, 3 se tiver API key paga
-[NEW] Graceful exit: não falha o workflow se cota acabar
-[NEW] Log estruturado para monitoramento de custos
 """
 import os
 import re
@@ -47,37 +41,44 @@ RSS_FEEDS = [
     "https://valor.globo.com/rss/financas",
     "https://www.moneytimes.com.br/feed/",
     "https://www.contabeis.com.br/feed/",
+    # [NEW] Fallback adicional para aumentar captura
+    "https://economia.uol.com.br/rss/ultimas-noticias.xml",
 ]
 
+# ✅ CORREÇÃO CRÍTICA: Keywords SEM espaço no final + mais termos de cauda longa
 KEYWORDS = [
-    "cartão de crédito ", "cartao de credito ",
-    "mei ", "microempreendedor ",
-    "empréstimo ", "emprestimo ",
-    "financiamento ", "limite de crédito ",
-    "fintechs ", "conta pj ", "crédito empresarial ",
+    "cartão de crédito", "cartao de credito",    "mei", "microempreendedor",
+    "empréstimo", "emprestimo",
+    "financiamento", "limite de crédito", "limite de credito",
+    "fintechs", "conta pj", "crédito empresarial", "credito empresarial",
+    # [NEW] Keywords extras para ampliar captura (sem espaço!)
+    "cartão mei", "crédito pj", "taxa de juros",
+    "score serasa", "antecipação recebíveis", "liberação crédito",
+    "aprovação cartão", "negociação dívida", "serasa limpa nome",
+    "conta digital pj", "saque aniversário", "juros rotativo",
 ]
 
 CONTENT_DIR    = Path("content/posts")
 HISTORICO_FILE = Path("historico.txt")
-CACHE_DIR      = Path(".gemini_cache")  # [NEW] Cache em disco
+CACHE_DIR      = Path(".gemini_cache")
 
-# [NEW] Detecta se está em free tier pela variável de ambiente
+# Detecta tier para limitar posts no free
 IS_FREE_TIER = os.environ.get("GEMINI_TIER", "free").lower() == "free"
 MAX_POSTS    = 1 if IS_FREE_TIER else 3
 
 # ── Delays ──
-API_DELAY    = 30 if IS_FREE_TIER else 15  # Mais conservador no free tier
+API_DELAY    = 30 if IS_FREE_TIER else 15
 PEXELS_DELAY = 2
 
 GEMINI_MODEL          = "gemini-2.0-flash"
 GEMINI_MAX_TENTATIVAS = 3
 
-# ── Pexels ──
+# ✅ CORREÇÃO: Queries Pexels SEM espaço no final
 PEXELS_QUERY_MAP = {
-    "Cartão de Crédito ": "credit card business finance ",
-    "MEI ":                "small business entrepreneur ",
-    "Empréstimos ":        "bank loan money finance ",
-    "Finanças ":           "personal finance investment money ",
+    "Cartão de Crédito": "credit card business finance",
+    "MEI":                "small business entrepreneur",
+    "Empréstimos":        "bank loan money finance",
+    "Finanças":           "personal finance investment money",
 }
 
 PEXELS_FALLBACK = {
@@ -86,45 +87,41 @@ PEXELS_FALLBACK = {
 }
 
 PEXELS_USER_AGENT = (
-    "Mozilla/5.0 (compatible; FinaceProBot/4.1; "
+    "Mozilla/5.0 (compatible; FinaceProBot/4.3; "
     "+https://portalrapnacional.github.io/FinacePro/)"
 )
 
+# ✅ CORREÇÃO: Keywords primárias SEM espaço no final
 KEYWORD_PRIMARIA = {
-    "Cartão de Crédito ": "cartão de crédito para MEI ",
-    "MEI ":                "MEI microempreendedor individual ",
-    "Empréstimos ":        "empréstimo para MEI ",
-    "Finanças ":           "educação financeira para empreendedores ",
-}
+    "Cartão de Crédito": "cartão de crédito para MEI",
+    "MEI":                "MEI microempreendedor individual",
+    "Empréstimos":        "empréstimo para MEI",
+    "Finanças":           "educação financeira para empreendedores",}
 
 # ─────────────────────────────────────────────
-# [NEW] FUNÇÕES DE CACHE EM DISCO
+# FUNÇÕES DE CACHE EM DISCO
 # ─────────────────────────────────────────────
 def _cache_key(prompt: str) -> str:
-    """Gera hash MD5 do prompt para usar como nome de arquivo de cache."""
     return hashlib.md5(prompt.encode("utf-8")).hexdigest()
 
 def _load_from_cache(prompt: str) -> Optional[str]:
-    """Tenta carregar resposta do cache. Retorna None se não existir ou expirado."""
     cache_file = CACHE_DIR / f"{_cache_key(prompt)}.json"
     if not cache_file.exists():
         return None
     try:
         with open(cache_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-        # Cache válido por 7 dias (para notícias financeiras)
         if time.time() - data.get("timestamp", 0) < 7 * 24 * 3600:
             log.info(f"♻️ Cache HIT: {data.get('titulo', 'artigo')[:50]}...")
             return data["content"]
         else:
-            cache_file.unlink()  # Remove cache expirado
+            cache_file.unlink()
             return None
     except Exception as e:
         log.warning(f"⚠️ Erro ao ler cache: {e}")
         return None
 
 def _save_to_cache(prompt: str, content: str, titulo: str) -> None:
-    """Salva resposta no cache em disco."""
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         cache_file = CACHE_DIR / f"{_cache_key(prompt)}.json"
@@ -148,10 +145,10 @@ def buscar_noticias(feeds: list, keywords: list) -> list:
         try:
             feed = feedparser.parse(url)
             for entry in feed.entries:
-                titulo = entry.get("title", "").strip()
-                link   = entry.get("link", "").strip()
+                titulo = entry.get("title", "").strip()                link   = entry.get("link", "").strip()
                 if not titulo or not link:
                     continue
+                # ✅ CORREÇÃO: keywords sem espaço = match correto
                 if any(kw in titulo.lower() for kw in keywords):
                     encontradas.append({
                         "titulo": titulo,
@@ -197,10 +194,9 @@ def filtrar_novas(noticias: list, historico: set) -> list:
 def buscar_imagem_pexels(categoria: str) -> dict:
     api_key = os.environ.get("PEXELS_API_KEY", "").strip()
     if not api_key:
-        log.warning("⚠️ PEXELS_API_KEY ausente. Usando imagem fallback.")
-        return PEXELS_FALLBACK
+        log.warning("⚠️ PEXELS_API_KEY ausente. Usando imagem fallback.")        return PEXELS_FALLBACK
 
-    query = PEXELS_QUERY_MAP.get(categoria, PEXELS_QUERY_MAP["Finanças "])
+    query = PEXELS_QUERY_MAP.get(categoria, PEXELS_QUERY_MAP["Finanças"])
     query_encoded = urllib.parse.quote(query)
     endpoint = (
         f"https://api.pexels.com/v1/search?query={query_encoded}&per_page=5&orientation=landscape"
@@ -237,7 +233,7 @@ def buscar_imagem_pexels(categoria: str) -> dict:
         return PEXELS_FALLBACK
 
 # ─────────────────────────────────────────────
-# MÓDULO 4 — IA GEMINI [v4.1: CACHE + BACKOFF INTELIGENTE]
+# MÓDULO 4 — IA GEMINI
 # ─────────────────────────────────────────────
 def configurar_gemini():
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -248,7 +244,6 @@ def configurar_gemini():
     tier = "PAGO" if not IS_FREE_TIER else "FREE"
     log.info(f"🤖 Gemini OK. Modelo: {GEMINI_MODEL} | Tier: {tier} | Max posts: {MAX_POSTS}")
     return client
-
 def gerar_artigo(client, titulo: str, fonte: str, categoria: str) -> Optional[str]:
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     ano_atual = datetime.now().year
@@ -297,13 +292,12 @@ R: [2-3 frases com comparação direta]
 Conteúdo produzido pelo Conselho Editorial FinacePro em {data_hoje}. As informações têm caráter educativo. Consulte um especialista financeiro antes de contratar qualquer produto de crédito.
 ═══ REGRAS ABSOLUTAS ═══
 Português do Brasil, linguagem acessível (nível ensino médio)
-"{kw_primaria}" aparece 4 a 6 vezes de forma natural no texto
-APENAS dados verificáveis: use "conforme Banco Central", "segundo Sebrae" etc.
+"{kw_primaria}" aparece 4 a 6 vezes de forma natural no textoAPENAS dados verificáveis: use "conforme Banco Central", "segundo Sebrae" etc.
 NÃO escreva nada antes do # do título (sem "Claro!", "Aqui está:", etc.)
 Entre 950 e 1.300 palavras no total
 A tabela comparativa é OBRIGATÓRIA e deve ter 4 linhas"""
 
-    # [NEW] Verifica cache ANTES de chamar API
+    # Verifica cache antes de chamar API
     cached = _load_from_cache(prompt)
     if cached:
         return cached
@@ -318,24 +312,22 @@ A tabela comparativa é OBRIGATÓRIA e deve ter 4 linhas"""
             conteudo = response.text.strip()
             log.info(f"✅ Artigo gerado ({len(conteudo)} chars)")
             
-            # [NEW] Salva no cache após sucesso
+            # Salva no cache após sucesso
             _save_to_cache(prompt, conteudo, titulo)
             return conteudo
 
         except Exception as e:
             erro_str = str(e)
             if "429" in erro_str or "RESOURCE_EXHAUSTED" in erro_str:
-                # [NEW] Backoff exponencial COM JITTER
-                base_delay = 30 * (2 ** (tentativa - 1))  # 30s, 60s, 120s
-                jitter = random.uniform(0, 15)  # +0-15s aleatório
+                base_delay = 30 * (2 ** (tentativa - 1))
+                jitter = random.uniform(0, 15)
                 espera = int(base_delay + jitter)
                 
                 if tentativa < GEMINI_MAX_TENTATIVAS:
                     log.warning(f"⏳ Rate limit Gemini. Aguardando {espera}s (tentativa {tentativa+1}/3)...")
                     time.sleep(espera)
                 else:
-                    # [NEW] Graceful exit: não falha o workflow, apenas pula este post
-                    log.warning(f"⚠️ Cota Gemini esgotada para '{titulo[:50]}'. Post adiado para próxima execução.")
+                    log.warning(f"⚠️ Cota Gemini esgotada para '{titulo[:50]}'. Post adiado.")
                     return None
             else:
                 log.error(f"❌ Erro Gemini não-retry: {e}")
@@ -349,8 +341,7 @@ A tabela comparativa é OBRIGATÓRIA e deve ter 4 linhas"""
 # ─────────────────────────────────────────────
 def extrair_h1(md: str) -> str:
     for linha in md.splitlines():
-        if linha.startswith("# "):
-            return linha[2:].strip()
+        if linha.startswith("# "):            return linha[2:].strip()
     return "Artigo sobre Finanças para MEI"
 
 def extrair_meta_description(md: str, titulo_safe: str) -> str:
@@ -372,20 +363,20 @@ def slugify(texto: str) -> str:
 
 def detectar_meta(titulo: str) -> tuple:
     tl = titulo.lower()
-    categoria, tags = "Finanças ", []
-    if any(k in tl for k in ["cartão ", "cartao ", "crédito ", "credito "]):
-        categoria = "Cartão de Crédito "
-        tags += ["cartão de crédito ", "crédito ", "finanças pessoais "]
-    if any(k in tl for k in ["mei ", "microempreendedor "]):
-        if categoria == "Finanças ":
-            categoria = "MEI "
-        tags += ["mei ", "empreendedorismo ", "pequenos negócios "]
-    if any(k in tl for k in ["empréstimo ", "emprestimo ", "financiamento "]):
-        if categoria == "Finanças ":
-            categoria = "Empréstimos "
-        tags += ["empréstimo ", "crédito empresarial "]
+    categoria, tags = "Finanças", []
+    if any(k in tl for k in ["cartão", "cartao", "crédito", "credito"]):
+        categoria = "Cartão de Crédito"
+        tags += ["cartão de crédito", "crédito", "finanças pessoais"]
+    if any(k in tl for k in ["mei", "microempreendedor"]):
+        if categoria == "Finanças":
+            categoria = "MEI"
+        tags += ["mei", "empreendedorismo", "pequenos negócios"]
+    if any(k in tl for k in ["empréstimo", "emprestimo", "financiamento"]):
+        if categoria == "Finanças":
+            categoria = "Empréstimos"
+        tags += ["empréstimo", "crédito empresarial"]
     if not tags:
-        tags = ["finanças ", "dinheiro ", "brasil "]
+        tags = ["finanças", "dinheiro", "brasil"]
     return categoria, list(dict.fromkeys(tags))
 
 def front_matter(titulo: str, categoria: str, tags: list, img: dict, meta_desc: str) -> str:
@@ -399,8 +390,7 @@ def front_matter(titulo: str, categoria: str, tags: list, img: dict, meta_desc: 
         f'---\n'
         f'title: "{titulo_safe}"\n'
         f'date: {data}\n'
-        f'draft: false\n'
-        f'author: "Conselho Editorial FinacePro"\n'
+        f'draft: false\n'        f'author: "Conselho Editorial FinacePro"\n'
         f'categories:\n'
         f'  - "{categoria}"\n'
         f'tags:\n'
@@ -449,9 +439,8 @@ def salvar_post(conteudo_md: str, pasta: Path, img: dict) -> Optional[Path]:
 # ─────────────────────────────────────────────
 # ORQUESTRADOR PRINCIPAL
 # ─────────────────────────────────────────────
-def main() -> None:
-    log.info("=" * 60)
-    log.info("🏦 BLOG AUTOMATOR v4.1 — Cartões de Crédito & MEI")
+def main() -> None:    log.info("=" * 60)
+    log.info("🏦 BLOG AUTOMATOR v4.3 — Cartões de Crédito & MEI")
     log.info(f"📊 Tier: {'PAGO (3 posts)' if not IS_FREE_TIER else 'FREE (1 post)'}")
     log.info("=" * 60)
     
@@ -495,16 +484,13 @@ def main() -> None:
             criados += 1
             log.info(f"✅ Post #{criados} criado com sucesso!")
         
-        # Pausa entre posts (somente se houver mais para criar)
         if criados < MAX_POSTS and criados > 0:
             log.info(f"⏳ Pausa {API_DELAY}s entre posts (rate limit Gemini)...")
             time.sleep(API_DELAY)
 
-    log.info(f"\n🚀 [4/4] Finalizando ({criados} post(s) criado(s))...")
-    
+    log.info(f"\n🚀 [4/4] Finalizando ({criados} post(s) criado(s))...")    
     if criados == 0:
-        log.warning("⚠️ Nenhum post criado hoje. Workflow concluído sem erros (deploy cancelado intencionalmente).")
-        # [NEW] Exit 0 para não falhar o GitHub Actions quando não há posts
+        log.warning("⚠️ Nenhum post criado hoje. Workflow concluído sem erros.")
         sys.exit(0)
     
     log.info("\n" + "=" * 60)
