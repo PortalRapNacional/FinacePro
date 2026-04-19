@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║         BLOG AUTOMATOR v7.0 — FinacePro [PRO PRODUCTION]        ║
-║   [FINAL] Groq Llama 3.1 + Pexels + Hugo Clean + Auto-Dedup     ║
+║         BLOG AUTOMATOR v7.5 — FinacePro [ELITE EDITION]        ║
+║   [FINAL] Clean Editorial + Bloomberg Style + AdSense Ready     ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
 import os, re, sys, time, hashlib, logging, json, urllib.request, urllib.parse, urllib.error
@@ -30,10 +30,9 @@ RSS_FEEDS = [
 
 KEYWORDS = [
     "cartão de crédito", "cartao de credito", "mei", "microempreendedor",
-    "empréstimo", "emprestimo", "financiamento", "limite de crédito", "limite de credito",
-    "fintechs", "conta pj", "crédito empresarial", "credito empresarial",
-    "cartão mei", "crédito pj", "taxa de juros", "score serasa",
-    "antecipação recebíveis", "liberação crédito", "aprovação cartão",
+    "empréstimo", "emprestimo", "financiamento", "limite de crédito",
+    "fintechs", "conta pj", "crédito empresarial", "cartão mei",
+    "taxa de juros", "score serasa", "antecipação recebíveis",
 ]
 
 CONTENT_DIR = Path("content/posts")
@@ -41,7 +40,6 @@ HISTORICO_FILE = Path("historico.txt")
 CACHE_DIR = Path(".ai_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
-# ✅ MODELO ATUALIZADO (Llama 3.1 8B Instant)
 GROQ_MODEL = "llama-3.1-8b-instant"
 MAX_POSTS = 1 
 API_DELAY = 15 
@@ -55,7 +53,7 @@ PEXELS_QUERY_MAP = {
 PEXELS_FALLBACK = {"url": "https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg", "alt": "Finanças FinacePro"}
 
 # ─────────────────────────────────────────────
-# UTILITÁRIOS & CACHE
+# UTILITÁRIOS
 # ─────────────────────────────────────────────
 def _hash(link: str) -> str: return hashlib.md5(link.encode()).hexdigest()
 
@@ -64,8 +62,7 @@ def _load_cache(prompt: str) -> Optional[str]:
     if f.exists():
         try:
             with open(f, "r", encoding="utf-8") as file:
-                data = json.load(file)
-            return data["content"]
+                return json.load(file)["content"]
         except: pass
     return None
 
@@ -90,56 +87,48 @@ def buscar_imagem_pexels(categoria: str) -> dict:
     except: return PEXELS_FALLBACK
 
 # ─────────────────────────────────────────────
-# MÓDULO IA (GROQ)
+# MÓDULO IA (GROQ) - PROMPT REFINADO
 # ─────────────────────────────────────────────
 def gerar_artigo_groq(titulo: str, fonte: str) -> Optional[str]:
     api_key = os.environ.get("GROQ_API_KEY", "").strip()
-    if not api_key:
-        log.error("❌ GROQ_API_KEY não configurada nos Secrets.")
-        return None
+    if not api_key: return None
 
-    prompt = f"""Você é um jornalista financeiro especializado em SEO. Escreva um artigo completo sobre: {titulo} (Fonte: {fonte}). 
-    Use Markdown, inclua um título H1 focado em conversão, meta descrição e uma tabela comparativa de taxas/benefícios. Mínimo 800 palavras."""
+    prompt = f"""Você é um analista financeiro sênior. Escreva um artigo de autoridade sobre: "{titulo}".
+    REGRAS DE OURO:
+    1. Comece DIRETO com um título H1 impactante (Não escreva 'Título:').
+    2. Escreva uma introdução sem usar a palavra 'Introdução'.
+    3. Use subtítulos H2 e H3 para organizar os dados.
+    4. Crie uma TABELA DE COMPARAÇÃO ou QUADRO DE RESUMO técnico em Markdown.
+    5. Mínimo 800 palavras. Estilo: Jornalismo de Elite (Ex: Bloomberg/Exame).
+    6. Proibido rótulos como: 'Meta descrição:', 'Resumo:', 'Fonte:'.
+    7. Foque em SEO para crédito, MEI e finanças."""
 
     cached = _load_cache(prompt)
     if cached: return cached
 
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0"
-    }
-    
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
     payload = {
         "model": GROQ_MODEL,
         "messages": [
-            {"role": "system", "content": "Você é um especialista em finanças brasileiras, MEI e SEO para AdSense."},
+            {"role": "system", "content": "Você é o Conselho Editorial do FinacePro. Seu tom é profissional, direto e confiável."},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.7
     }
 
     try:
-        log.info(f"🧠 Gerando artigo via Groq ({GROQ_MODEL})...")
-        req = urllib.request.Request(
-            "https://api.groq.com/openai/v1/chat/completions", 
-            data=json.dumps(payload).encode("utf-8"), 
-            headers=headers
-        )
+        log.info(f"🧠 Gerando artigo de Elite via Groq...")
+        req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=json.dumps(payload).encode("utf-8"), headers=headers)
         with urllib.request.urlopen(req, timeout=60) as resp:
             res = json.loads(resp.read().decode("utf-8"))
             conteudo = res['choices'][0]['message']['content'].strip()
             _save_cache(prompt, conteudo, titulo)
             return conteudo
-    except urllib.error.HTTPError as e:
-        log.error(f"❌ Erro HTTP {e.code}: {e.read().decode()}")
-        return None
     except Exception as e:
-        log.info(f"❌ Erro na IA: {e}")
-        return None
+        log.error(f"❌ Falha na IA: {e}"); return None
 
 # ─────────────────────────────────────────────
-# SALVAMENTO & MAIN
+# SALVAMENTO EDITORIAL (LIMPEZA ADSense)
 # ─────────────────────────────────────────────
 def slugify(t: str) -> str:
     s = t.lower()
@@ -148,23 +137,31 @@ def slugify(t: str) -> str:
 
 def salvar_post(conteudo, img):
     try:
+        # Limpeza Editorial: Remove lixo de rascunho da IA
         linhas = conteudo.splitlines()
-        titulo_h1 = next((l[2:].strip() for l in linhas if l.startswith("# ")), "Notícia Financeira")
+        corpo_final = []
+        for l in linhas:
+            if any(term in l.lower() for term in ["título:", "meta descrição:", "introdução:", "meta description:"]):
+                continue
+            corpo_final.append(l)
+        
+        texto_limpo = "\n".join(corpo_final).strip()
+        titulo_h1 = next((l[2:].strip() for l in corpo_final if l.startswith("# ")), "Tendências Financeiras")
+        
         nome = f"{datetime.now().strftime('%Y-%m-%d')}-{slugify(titulo_h1)}.md"
         fm = f'---\ntitle: "{titulo_h1}"\ndate: {datetime.now(timezone.utc).isoformat()}\nauthor: "Conselho Editorial FinacePro"\ncover:\n  image: "{img["url"]}"\n---\n\n'
-        (CONTENT_DIR / nome).write_text(fm + conteudo, encoding="utf-8")
+        
+        (CONTENT_DIR / nome).write_text(fm + texto_limpo, encoding="utf-8")
         return True
     except Exception as e:
-        log.error(f"❌ Erro ao salvar post: {e}")
-        return False
+        log.error(f"❌ Erro ao salvar post: {e}"); return False
 
 def main():
-    log.info("🚀 FinacePro v7.0 Iniciado")
+    log.info("🚀 FinacePro v7.5 [ELITE MODE] Iniciado")
     CONTENT_DIR.mkdir(parents=True, exist_ok=True)
     if not HISTORICO_FILE.exists(): HISTORICO_FILE.touch()
     
-    with open(HISTORICO_FILE, "r") as f: 
-        historico = {l.strip() for l in f}
+    with open(HISTORICO_FILE, "r") as f: historico = {l.strip() for l in f}
 
     noticias = []
     for url in RSS_FEEDS:
@@ -176,23 +173,18 @@ def main():
                     noticias.append(entry)
 
     if not noticias:
-        log.info("✅ Nenhuma notícia nova para processar.")
-        return
+        log.info("✅ Tudo atualizado."); return
 
     criados = 0
     for n in noticias:
         if criados >= MAX_POSTS: break
-        
         img = buscar_imagem_pexels("Finanças")
         artigo = gerar_artigo_groq(n.title, n.link)
-        
-        if artigo:
-            if salvar_post(artigo, img):
-                with open(HISTORICO_FILE, "a") as f: 
-                    f.write(_hash(n.link) + "\n")
-                log.info(f"✅ Sucesso: {n.title[:50]}...")
-                criados += 1
-                if criados < MAX_POSTS: time.sleep(API_DELAY)
+        if artigo and salvar_post(artigo, img):
+            with open(HISTORICO_FILE, "a") as f: f.write(_hash(n.link) + "\n")
+            log.info(f"✅ Sucesso: {n.title[:50]}...")
+            criados += 1
+            if criados < MAX_POSTS: time.sleep(API_DELAY)
 
 if __name__ == "__main__":
     main()
