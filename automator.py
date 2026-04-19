@@ -1,6 +1,6 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║         BLOG AUTOMATOR v6.5 — FinacePro [PRO PRODUCTION]        ║
+║         BLOG AUTOMATOR v7.0 — FinacePro [PRO PRODUCTION]        ║
 ║   [FINAL] Groq Llama 3.1 + Pexels + Hugo Clean + Auto-Dedup     ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
@@ -94,38 +94,49 @@ def buscar_imagem_pexels(categoria: str) -> dict:
 # ─────────────────────────────────────────────
 def gerar_artigo_groq(titulo: str, fonte: str) -> Optional[str]:
     api_key = os.environ.get("GROQ_API_KEY", "").strip()
-    if not api_key: return None
+    if not api_key:
+        log.error("❌ GROQ_API_KEY não configurada nos Secrets.")
+        return None
 
-    prompt = f"""Você é um jornalista financeiro. Escreva um artigo completo sobre: {titulo} (Fonte: {fonte}). 
-    Use Markdown, inclua um título H1, meta descrição e uma tabela comparativa. Mínimo 800 palavras."""
+    prompt = f"""Você é um jornalista financeiro especializado em SEO. Escreva um artigo completo sobre: {titulo} (Fonte: {fonte}). 
+    Use Markdown, inclua um título H1 focado em conversão, meta descrição e uma tabela comparativa de taxas/benefícios. Mínimo 800 palavras."""
 
     cached = _load_cache(prompt)
     if cached: return cached
 
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0"
     }
     
     payload = {
         "model": GROQ_MODEL,
         "messages": [
-            {"role": "system", "content": "Você é um especialista em finanças, MEI e SEO."},
+            {"role": "system", "content": "Você é um especialista em finanças brasileiras, MEI e SEO para AdSense."},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.7
     }
 
     try:
-        log.info(f"🧠 Gerando artigo via Groq...")
-        req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=json.dumps(payload).encode("utf-8"), headers=headers)
+        log.info(f"🧠 Gerando artigo via Groq ({GROQ_MODEL})...")
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions", 
+            data=json.dumps(payload).encode("utf-8"), 
+            headers=headers
+        )
         with urllib.request.urlopen(req, timeout=60) as resp:
             res = json.loads(resp.read().decode("utf-8"))
             conteudo = res['choices'][0]['message']['content'].strip()
             _save_cache(prompt, conteudo, titulo)
             return conteudo
+    except urllib.error.HTTPError as e:
+        log.error(f"❌ Erro HTTP {e.code}: {e.read().decode()}")
+        return None
     except Exception as e:
-        log.error(f"❌ Erro na IA: {e}"); return None
+        log.info(f"❌ Erro na IA: {e}")
+        return None
 
 # ─────────────────────────────────────────────
 # SALVAMENTO & MAIN
@@ -136,34 +147,52 @@ def slugify(t: str) -> str:
     return re.sub(r"[\s_]+", "-", re.sub(r"[^a-z0-9\s-]", "", s)).strip("-")
 
 def salvar_post(conteudo, img):
-    linhas = conteudo.splitlines()
-    titulo_h1 = next((l[2:].strip() for l in linhas if l.startswith("# ")), "Notícia Financeira")
-    nome = f"{datetime.now().strftime('%Y-%m-%d')}-{slugify(titulo_h1)}.md"
-    fm = f'---\ntitle: "{titulo_h1}"\ndate: {datetime.now(timezone.utc).isoformat()}\nauthor: "Conselho Editorial FinacePro"\ncover:\n  image: "{img["url"]}"\n---\n\n'
-    (CONTENT_DIR / nome).write_text(fm + conteudo, encoding="utf-8")
+    try:
+        linhas = conteudo.splitlines()
+        titulo_h1 = next((l[2:].strip() for l in linhas if l.startswith("# ")), "Notícia Financeira")
+        nome = f"{datetime.now().strftime('%Y-%m-%d')}-{slugify(titulo_h1)}.md"
+        fm = f'---\ntitle: "{titulo_h1}"\ndate: {datetime.now(timezone.utc).isoformat()}\nauthor: "Conselho Editorial FinacePro"\ncover:\n  image: "{img["url"]}"\n---\n\n'
+        (CONTENT_DIR / nome).write_text(fm + conteudo, encoding="utf-8")
+        return True
+    except Exception as e:
+        log.error(f"❌ Erro ao salvar post: {e}")
+        return False
 
 def main():
-    log.info("🚀 FinacePro v6.5")
+    log.info("🚀 FinacePro v7.0 Iniciado")
+    CONTENT_DIR.mkdir(parents=True, exist_ok=True)
     if not HISTORICO_FILE.exists(): HISTORICO_FILE.touch()
-    with open(HISTORICO_FILE, "r") as f: historico = {l.strip() for l in f}
+    
+    with open(HISTORICO_FILE, "r") as f: 
+        historico = {l.strip() for l in f}
 
     noticias = []
     for url in RSS_FEEDS:
+        log.info(f"📡 Lendo feed: {url}")
         feed = feedparser.parse(url)
         for entry in feed.entries:
             if any(kw in entry.title.lower() for kw in KEYWORDS):
                 if _hash(entry.link) not in historico:
                     noticias.append(entry)
 
-    for n in noticias[:MAX_POSTS]:
+    if not noticias:
+        log.info("✅ Nenhuma notícia nova para processar.")
+        return
+
+    criados = 0
+    for n in noticias:
+        if criados >= MAX_POSTS: break
+        
         img = buscar_imagem_pexels("Finanças")
         artigo = gerar_artigo_groq(n.title, n.link)
+        
         if artigo:
-            salvar_post(artigo, img)
-            with open(HISTORICO_FILE, "a") as f: f.write(_hash(n.link) + "\n")
-            log.info(f"✅ Post criado com sucesso!")
-            break
+            if salvar_post(artigo, img):
+                with open(HISTORICO_FILE, "a") as f: 
+                    f.write(_hash(n.link) + "\n")
+                log.info(f"✅ Sucesso: {n.title[:50]}...")
+                criados += 1
+                if criados < MAX_POSTS: time.sleep(API_DELAY)
 
 if __name__ == "__main__":
     main()
-
