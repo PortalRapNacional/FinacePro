@@ -34,6 +34,16 @@ Content = "As melhores análises de cartões, crédito empresarial e dicas para 
 name = "email"
 url = "mailto:contato@finacepro.com"
 
+[params]
+  # Estética Premium
+  ShowFullTextContent = false # Mostra apenas o resumo na home (estilo portal de notícias)
+  ShowShareButtons = true
+  ShowReadingTime = true
+  
+  [params.cover]
+    hiddenInList = false # Mostra a imagem do Pexels na página inicial
+    hiddenInSingle = false # Mostra a imagem dentro do post
+
 [build]
 publishResources = true
 renderDrafts = true
