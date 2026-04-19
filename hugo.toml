@@ -43,7 +43,10 @@ url = "mailto:contato@finacepro.com"
   [params.cover]
     hiddenInList = false # Mostra a imagem do Pexels na página inicial
     hiddenInSingle = false # Mostra a imagem dentro do post
-
+    
+[params]
+  defaultTheme = "light" # Para o Google aprovar
+  # Mas adicione o dourado nos links via CSS customizado se puder
 [build]
 publishResources = true
 renderDrafts = true
