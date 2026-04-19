@@ -4,27 +4,31 @@ title = "FinacePro | Crédito, MEI e Soluções Financeiras"
 theme = "PaperMod"
 disableKinds = ["taxonomy", "term"]
 
-# ✅ Configuração de paginação para versões modernas do Hugo
+# ✅ Paginação ideal para SEO e carregamento rápido
 [pagination]
   pagerSize = 12
 
 [params]
   env = "production"
   title = "FinacePro"
-  description = "Guia completo sobre cartões de crédito para MEI, empréstimos e educação financeira."
+  description = "Guia de autoridade sobre cartões de crédito para MEI, empréstimos empresariais e inteligência financeira."
   author = "Conselho Editorial FinacePro"
   
-  # ✅ Estética Premium e AdSense
+  # ✅ Estética de Elite (Casando com o novo CSS)
   defaultTheme = "light"
-  disableThemeToggle = true
+  disableThemeToggle = true # Mantém a identidade Slate/Indigo fixa
   ShowReadingTime = true
   ShowBreadCrumbs = true
   ShowPostNavLinks = true
   ShowCodeCopyButtons = true
   ShowShareButtons = true
-  ShowToc = true
-  ShowFullTextContent = false # Estilo portal: exibe apenas o resumo na página inicial
+  ShowFullTextContent = false # Exibe apenas o resumo (melhor para cliques)
 
+  # ✅ Configuração de Sumário (TOC) para SEO
+  [params.toc]
+    enable = true
+    open = false # Design limpo: o usuário abre se precisar
+    
   # ✅ Configuração de Imagens (Capa)
   [params.cover]
     linkFullImages = true
@@ -32,23 +36,29 @@ disableKinds = ["taxonomy", "term"]
     hiddenInList = false 
     hiddenInSingle = false
 
-  # ✅ Layout da Home
+  # ✅ Texto de Boas-Vindas (Landing Page Magnética)
   [params.homeInfoParams]
-    Title = "💰 Inteligência Financeira e Crédito para MEI"
-    Content = "As melhores análises de cartões, crédito empresarial e dicas para organizar as finanças do seu negócio."
+    Title = "💰 Inteligência em Crédito e Gestão para MEI"
+    Content = "Análises técnicas de cartões, crédito para empresas e estratégias para a saúde financeira do seu negócio."
 
-  # ✅ Ícones Sociais
+  # ✅ Rodapé Profissional (Exigência AdSense para credibilidade)
+  [params.footer]
+    hideCopyright = false
+    content = "FinacePro © 2026 - O seu portal de inteligência financeira. Todos os direitos reservados."
+
+  # ✅ Redes Sociais
   [[params.socialIcons]]
     name = "email"
     url = "mailto:contato@finacepro.com"
 
+# ✅ Configurações de Build para garantir que os posts apareçam
 [build]
   publishResources = true
-  renderDrafts = true
+  renderDrafts = false
   renderFuture = true
-  renderExpired = true
+  renderExpired = false
 
-# ✅ Menu focado em High CPM e Autoridade
+# ✅ Menu Estruturado para Alto CPC (Custo por Clique)
 [[menu.main]]
   name = "💳 Cartões"
   url = "/posts/"
