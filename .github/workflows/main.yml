@@ -1,8 +1,9 @@
-name: 🤖 Blog Automator Full v4.5
+name: 🤖 Blog Automator Full v5.0
 
 on:
   schedule:
-    # ✅ Execução ÚNICA diária às 03:00 UTC (meia-noite BR) — reduz chamadas API em 50%
+    # ✅ Execução ÚNICA diária às 03:00 UTC (meia-noite BR) 
+    # Ideal para pegar as notícias do dia anterior e postar fresquinho.
     - cron: '0 3 * * *'
   workflow_dispatch:
 
@@ -19,7 +20,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      has_changes: ${{ steps.check.outputs.has_changes }}
+      has_changes: ${{ steps.commit.outputs.has_changes }}
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
@@ -33,69 +34,66 @@ jobs:
           python-version: "3.11"
           cache: 'pip'
 
-      - name: 📦 Dependências
+      - name: 📦 Instalar Dependências
         run: |
           pip install --upgrade pip
-          pip install google-genai feedparser
+          pip install feedparser
+          # ✅ Removido google-genai pois o v5.0 usa urllib (OpenRouter)
 
-      - name: 🗂️ Cache dir
-        run: mkdir -p .gemini_cache
+      - name: 🗂️ Garantir pastas de Cache e Conteúdo
+        run: |
+          mkdir -p .ai_cache
+          mkdir -p content/posts
 
-      - name: 🚀 Gerar Post
+      - name: 🚀 Gerar Post via OpenRouter
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          GEMINI_TIER: ${{ vars.GEMINI_TIER || 'free' }}  # ← Define free/pago
         run: python automator.py
-        continue-on-error: false
 
-      - name: 💾 Commit se houver novo post
+      - name: 💾 Salvar Alterações (Git Commit)
         id: commit
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Verifica se o script criou novos arquivos ou alterou o histórico
           if git diff --quiet -- content/posts/ historico.txt; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "Nenhuma mudança detectada."
           else
-            git add content/posts/ historico.txt .gemini_cache/
-            git commit -m "📝 Auto-post: $(date +'%Y-%m-%d')"
+            git add content/posts/ historico.txt .ai_cache/
+            git commit -m "📝 Auto-post FinacePro: $(date +'%Y-%m-%d')"
             git push
             echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Novos posts detectados e commitados."
           fi
 
-      - name: 🏗️ Hugo 0.146.0 (PaperMod compat)
+      - name: 🏗️ Setup Hugo (Versão Estável)
         uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: "0.146.0"
           extended: true
 
-      - name: 🔨 Build
+      - name: 🔨 Build Hugo
         run: |
-          hugo --minify --gc --baseURL "${{ secrets.SITE_URL || 'https://PortalRapNacional.github.io/FinacePro/' }}"
-          test -d public && test -n "$(ls -A public)" || exit 1
+          # O baseURL será injetado pelo Segredo ou usa o padrão do repo
+          hugo --minify --gc --baseURL "https://PortalRapNacional.github.io/FinacePro/"
 
-      - name: 📤 Upload
+      - name: 📤 Upload Artefato do Site
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
-      - name: 📋 Check
-        id: check
-        run: |
-          if [[ "${{ steps.commit.outputs.has_changes }}" == "true" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
-
   deploy:
     needs: build
+    # Só faz o deploy se houver novos posts ou se você rodar manualmente
     if: needs.build.outputs.has_changes == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: 🌐 Deploy
-        id: deploy
+      - name: 🌐 Deploy para GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
