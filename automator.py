@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║         BLOG AUTOMATOR v6.1 — FinacePro [GROQ CLOUD]            ║
-║   [FIX v6.1] Indentation Fix + Groq 8B + Pexels + Hugo          ║
+║         BLOG AUTOMATOR v6.2 — FinacePro [GROQ CLOUD]            ║
+║   [FIX v6.2] Estrutura JSON (400 Fix) + Indentação + Pexels     ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
 import os, re, sys, time, hashlib, logging, json, urllib.request, urllib.parse, urllib.error
@@ -41,7 +41,7 @@ HISTORICO_FILE = Path("historico.txt")
 CACHE_DIR = Path(".ai_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
-# ✅ CONFIGURAÇÃO GROQ
+# ✅ CONFIGURAÇÃO GROQ (O cérebro mais rápido)
 GROQ_MODEL = "llama3-8b-8192"
 MAX_POSTS = 1 
 API_DELAY = 15 
@@ -53,7 +53,7 @@ PEXELS_QUERY_MAP = {
     "Finanças": "personal finance investment money",
 }
 PEXELS_FALLBACK = {"url": "https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg", "alt": "Finanças e crédito para empreendedores brasileiros"}
-PEXELS_USER_AGENT = "Mozilla/5.0 (compatible; FinaceProBot/6.1;)"
+PEXELS_USER_AGENT = "Mozilla/5.0 (compatible; FinaceProBot/6.2;)"
 
 KEYWORD_PRIMARIA = {
     "Cartão de Crédito": "cartão de crédito para MEI",
@@ -86,7 +86,7 @@ def _save_cache(prompt: str, content: str, titulo: str):
     except: pass
 
 # ─────────────────────────────────────────────
-# MÓDULOS RSS & HISTÓRICO (DEDUP)
+# MÓDULOS RSS & HISTÓRICO
 # ─────────────────────────────────────────────
 def buscar_noticias(feeds: list, keywords: list) -> list:
     encontradas = []
@@ -125,7 +125,7 @@ def buscar_imagem_pexels(categoria: str) -> dict:
     except: return PEXELS_FALLBACK
 
 # ─────────────────────────────────────────────
-# MÓDULO IA (GROQ CLOUD API)
+# MÓDULO IA (GROQ CLOUD API) - CORREÇÃO 400
 # ─────────────────────────────────────────────
 def gerar_artigo_groq(titulo: str, fonte: str, categoria: str) -> Optional[str]:
     api_key = os.environ.get("GROQ_API_KEY", "").strip()
@@ -134,42 +134,48 @@ def gerar_artigo_groq(titulo: str, fonte: str, categoria: str) -> Optional[str]:
 
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     kw = KEYWORD_PRIMARIA.get(categoria, "finanças para MEI")
-    prompt = f"""Você é um jornalista financeiro sénior especializado em MEI. Escreva um artigo sobre: "{titulo}" (Fonte: {fonte}).
-Keyword principal: {kw}. 
-REGRAS: 
-1. Use Markdown. 
-2. Título H1 impactante. 
-3. Meta description inclusa. 
-4. Mínimo 800 palavras. 
-5. Inclua uma Tabela de Comparação. 
-6. Linguagem profissional para AdSense."""
+    prompt = f"""Escreva um artigo técnico sobre: "{titulo}" (Fonte: {fonte}). 
+    Keyword: {kw}. Use Markdown, H1, Meta description e uma Tabela de Comparação. 
+    Mínimo 800 palavras."""
 
     cached = _load_cache(prompt)
     if cached: return cached
 
-    # ✅ CORREÇÃO DE INDENTAÇÃO AQUI
+    # ✅ INDENTAÇÃO CORRIGIDA E HEADERS COMPLETOS
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        "User-Agent": "FinacePro/1.0"
     }
-    
+
+    # ✅ PAYLOAD EM FORMATO CHAT COMPLETION (Evita Erro 400)
     payload = {
         "model": GROQ_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.5
+        "messages": [
+            {"role": "system", "content": "Você é um jornalista financeiro especializado em SEO e AdSense."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
     }
 
     try:
-        log.info(f"🧠 Gerando via GROQ ({GROQ_MODEL})...")
-        req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=json.dumps(payload).encode(), headers=headers)
+        log.info(f"🧠 Chamando Groq ({GROQ_MODEL})...")
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions", 
+            data=json.dumps(payload).encode("utf-8"), 
+            headers=headers
+        )
         with urllib.request.urlopen(req, timeout=60) as resp:
-            res = json.loads(resp.read().decode())
+            res = json.loads(resp.read().decode("utf-8"))
             conteudo = res['choices'][0]['message']['content'].strip()
             _save_cache(prompt, conteudo, titulo)
             return conteudo
+    except urllib.error.HTTPError as e:
+        detalhes = e.read().decode()
+        log.error(f"❌ Erro 400 da Groq: {detalhes}")
+        return None
     except Exception as e:
-        log.error(f"❌ Erro Groq: {e}"); return None
+        log.error(f"❌ Erro inesperado: {e}"); return None
 
 # ─────────────────────────────────────────────
 # MÓDULO HUGO & SAVING
@@ -182,7 +188,7 @@ def slugify(t: str) -> str:
 def salvar_post(conteudo, img):
     try:
         linhas = conteudo.splitlines()
-        titulo_h1 = next((l[2:].strip() for l in linhas if l.startswith("# ")), "Artigo Financeiro")
+        titulo_h1 = next((l[2:].strip() for l in linhas if l.startswith("# ")), "Artigo FinacePro")
         nome = f"{datetime.now().strftime('%Y-%m-%d')}-{slugify(titulo_h1)}.md"
         
         fm = f'''---
@@ -203,13 +209,13 @@ cover:
 # MAIN
 # ─────────────────────────────────────────────
 def main():
-    log.info("🚀 FinacePro v6.1 [GROQ MODE]")
+    log.info("🚀 FinacePro v6.2 [GROQ STABLE]")
     noticias = buscar_noticias(RSS_FEEDS, KEYWORDS)
     historico = carregar_historico(HISTORICO_FILE)
     novas = [n for n in noticias if _hash(n["link"]) not in historico]
 
     if not novas:
-        log.info("✅ Nada novo."); return
+        log.info("✅ Tudo atualizado."); return
 
     for n in novas[:MAX_POSTS]:
         img = buscar_imagem_pexels("Finanças")
