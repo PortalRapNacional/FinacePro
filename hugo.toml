@@ -4,72 +4,68 @@ title = "FinacePro | Crédito, MEI e Soluções Financeiras"
 theme = "PaperMod"
 disableKinds = ["taxonomy", "term"]
 
-# ✅ CORREÇÃO: Substitui "paginate = 12" pela sintaxe compatível com Hugo ≥0.128
+# ✅ Paginação para versões recentes do Hugo
 [pagination]
-pagerSize = 12
+  pagerSize = 12
 
 [params]
-env = "production"
-title = "FinacePro"
-description = "Guia completo sobre cartões de crédito para MEI, empréstimos e educação financeira."
-author = "Conselho Editorial FinacePro"
-defaultTheme = "light"
-disableThemeToggle = true
-ShowReadingTime = true
-ShowBreadCrumbs = true
-ShowPostNavLinks = true
-ShowCodeCopyButtons = true
-ShowShareButtons = true
-ShowToc = true
-
-[params.cover]
-linkFullImages = true
-responsiveImages = true
-
-[params.homeInfoParams]
-Title = "💰 Inteligência Financeira e Crédito para MEI"
-Content = "As melhores análises de cartões, crédito empresarial e dicas para organizar as finanças do seu negócio."
-
-[[params.socialIcons]]
-name = "email"
-url = "mailto:contato@finacepro.com"
-
-[params]
-  # Estética Premium
-  ShowFullTextContent = false # Mostra apenas o resumo na home (estilo portal de notícias)
-  ShowShareButtons = true
-  ShowReadingTime = true
+  env = "production"
+  title = "FinacePro"
+  description = "Guia completo sobre cartões de crédito para MEI, empréstimos e educação financeira."
+  author = "Conselho Editorial FinacePro"
   
-  [params.cover]
-    hiddenInList = false # Mostra a imagem do Pexels na página inicial
-    hiddenInSingle = false # Mostra a imagem dentro do post
-    
-[params]
-  defaultTheme = "light" # Para o Google aprovar
-  # Mas adicione o dourado nos links via CSS customizado se puder
-[build]
-publishResources = true
-renderDrafts = true
-renderFuture = true
-renderExpired = true
+  # Estética Premium e AdSense
+  defaultTheme = "light"
+  disableThemeToggle = true
+  ShowReadingTime = true
+  ShowBreadCrumbs = true
+  ShowPostNavLinks = true
+  ShowCodeCopyButtons = true
+  ShowShareButtons = true
+  ShowToc = true
+  ShowFullTextContent = false # Estilo portal: mostra apenas o resumo na home
 
+  # Configuração de Imagens (Capa)
+  [params.cover]
+    linkFullImages = true
+    responsiveImages = true
+    hiddenInList = false 
+    hiddenInSingle = false
+
+  # Layout da Home
+  [params.homeInfoParams]
+    Title = "💰 Inteligência Financeira e Crédito para MEI"
+    Content = "As melhores análises de cartões, crédito empresarial e dicas para organizar as finanças do seu negócio."
+
+  # Ícones Sociais
+  [[params.socialIcons]]
+    name = "email"
+    url = "mailto:contato@finacepro.com"
+
+[build]
+  publishResources = true
+  renderDrafts = true
+  renderFuture = true
+  renderExpired = true
+
+# Menu focado em High CPM e Autoridade
 [[menu.main]]
-name = "💳 Cartões"
-url = "/posts/"
-weight = 10
+  name = "💳 Cartões"
+  url = "/posts/"
+  weight = 10
 [[menu.main]]
-name = "🏢 MEI"
-url = "/posts/"
-weight = 20
+  name = "🏢 MEI"
+  url = "/posts/"
+  weight = 20
 [[menu.main]]
-name = "📈 Empréstimos"
-url = "/posts/"
-weight = 30
+  name = "📈 Empréstimos"
+  url = "/posts/"
+  weight = 30
 [[menu.main]]
-name = "Sobre"
-url = "/about"
-weight = 40
+  name = "Sobre"
+  url = "/about"
+  weight = 40
 [[menu.main]]
-name = "Privacidade"
-url = "/privacy"
-weight = 50
+  name = "Privacidade"
+  url = "/privacy"
+  weight = 50
