@@ -43,7 +43,7 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 # ✅ CONFIGURAÇÃO OPENROUTER (MODELOS FREE)
 # Opções: "meta-llama/llama-3.1-70b-instruct:free" ou "google/gemini-flash-1.5-exp:free"
-AI_MODEL = "meta-llama/llama-3.1-70b-instruct:free"
+AI_MODEL = "meta-llama/llama-3.1-8b-instruct:free"
 MAX_POSTS = 1 # Recomendado para manter qualidade e evitar filtros de spam
 API_DELAY = 30 
 PEXELS_DELAY = 2
