@@ -1,152 +1,138 @@
 /* =============================================================
-   FinacePro — Design Premium
-   Arquivo: assets/css/extended/custom.css
-   O PaperMod carrega automaticamente qualquer .css em:
-   assets/css/extended/
+   FinacePro — Design Elite Modern (System Design v2.0)
+   Foco: Autoridade, Credibilidade e AdSense Magnético
    ============================================================= */
 
-/* ── Variáveis de cor ── */
+/* ── System Design Variables ── */
 :root {
-  --finace-black:  #111111;
-  --finace-gold:   #C5A059;
-  --finace-gold-hover: #a8863d;
-  --finace-bg:     #FAFAF8;
-  --finace-muted:  #555555;
-  --finace-border: #E8E4DC;
-  --finace-radius: 10px;
-  --finace-font:   "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --finace-bg:       #F8FAFC;  /* Off-white suave (Slate 50) */
+  --finace-top-bg:   #0F172A;  /* Deep Slate (Autoridade máxima) */
+  --finace-primary:   #4F46E5;  /* Indigo (Confiança Tecnológica) */
+  --finace-primary-h: #4338CA;
+  --finace-text:      #334155;  /* Slate 700 - Melhor leitura */
+  --finace-titles:    #1E293B;  /* Slate 800 - Peso visual */
+  --finace-border:    #E2E8F0;
+  --finace-card-bg:   #FFFFFF;
+  --finace-radius:    16px;     /* Bordas modernas e amigáveis */
+  --finace-font:      'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* ── Tipografia base ── */
+/* ── Base & Psychologically Optimized Typography ── */
 body {
   font-family: var(--finace-font);
   background-color: var(--finace-bg);
-  color: var(--finace-black);
+  color: var(--finace-text);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ── Títulos: preto profundo com peso máximo ── */
-h1, h2, h3, h4, .post-title a {
-  color: var(--finace-black) !important;
-  font-weight: 800;
-  letter-spacing: -0.3px;
+/* ── Deep Slate Header (Autoridade de Fintech) ── */
+.nav {
+  background: var(--finace-top-bg);
+  border-bottom: none;
+  padding: 0.5rem 0;
 }
 
-/* ── Links: dourado nobre ── */
-a {
-  color: var(--finace-gold);
-  transition: color 0.2s ease;
-}
-a:hover {
-  color: var(--finace-gold-hover);
-  text-decoration: underline;
+.logo a, .menu a {
+  color: #FFFFFF !important;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
-/* ── Cards de post: cartão premium com sombra suave ── */
+.menu a:hover {
+  color: var(--finace-primary) !important;
+}
+
+/* ── Elite Post Cards ── */
 .post-entry {
+  background: var(--finace-card-bg);
   border-radius: var(--finace-radius);
   border: 1px solid var(--finace-border);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  transition: box-shadow 0.25s ease, transform 0.2s ease;
-  overflow: hidden;
-  background: #ffffff;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 20px !important;
 }
 
 .post-entry:hover {
-  box-shadow: 0 6px 24px rgba(197, 160, 89, 0.18);
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  border-color: var(--finace-primary);
 }
 
-/* ── Imagem de capa nos cards ── */
-.post-entry .entry-cover img {
-  border-radius: var(--finace-radius) var(--finace-radius) 0 0;
-  object-fit: cover;
-  width: 100%;
-  height: 200px;
+.entry-cover img {
+  border-radius: 12px;
+  margin-bottom: 15px;
 }
 
-/* ── Header / navbar ── */
-.nav {
-  border-bottom: 2px solid var(--finace-gold);
-  background: #ffffff;
-}
-
-.logo a,
-.logo-switches a {
+/* ── Títulos Magnéticos ── */
+h1, h2, h3, .post-title a {
+  color: var(--finace-titles) !important;
   font-weight: 800;
-  color: var(--finace-black) !important;
-  font-size: 1.3rem;
+  line-height: 1.3;
 }
 
-/* ── Botão de CTA dourado (ex: "Leia mais") ── */
-.read-more a,
-.entry-footer a {
-  background: var(--finace-gold);
-  color: #ffffff !important;
-  padding: 4px 14px;
-  border-radius: 20px;
-  font-size: 0.82rem;
+/* ── Links & CTA (Botão Indigo) ── */
+a {
+  color: var(--finace-primary);
+  text-decoration: none;
+}
+
+.entry-footer a, .read-more a {
+  background: var(--finace-primary);
+  color: #FFFFFF !important;
+  border-radius: 8px;
+  padding: 8px 18px;
   font-weight: 600;
-  text-decoration: none !important;
-  transition: background 0.2s ease;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
 }
 
-.read-more a:hover,
-.entry-footer a:hover {
-  background: var(--finace-gold-hover);
-}
-
-/* ── Tags: pílulas com borda dourada ── */
-.post-tags a {
-  border: 1px solid var(--finace-gold);
-  color: var(--finace-gold) !important;
-  border-radius: 20px;
-  padding: 2px 10px;
-  font-size: 0.78rem;
-  text-decoration: none !important;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.post-tags a:hover {
-  background: var(--finace-gold);
-  color: #ffffff !important;
-}
-
-/* ── Metadados (data, autor, tempo de leitura) ── */
-.post-meta,
-.entry-meta {
-  color: var(--finace-muted);
-  font-size: 0.83rem;
-}
-
-/* ── Artigo: texto espaçado e legível ── */
+/* ── Conteúdo do Artigo (Foco em AdSense) ── */
 .post-content {
-  font-size: 1.07rem;
+  font-size: 1.125rem;
   line-height: 1.8;
-  color: #222222;
+  color: #334155;
 }
 
 .post-content h2 {
-  border-left: 4px solid var(--finace-gold);
-  padding-left: 12px;
-  margin-top: 2rem;
+  color: var(--finace-titles);
+  border-left: 5px solid var(--finace-primary);
+  padding-left: 15px;
+  margin-top: 2.5rem;
 }
 
-/* ── FAQ: destaque suave ── */
-.post-content strong {
-  color: var(--finace-black);
+/* Tabelas Premium (Gera alto valor pro Google) */
+table {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--finace-border);
+  background: white;
+  margin: 2rem 0;
 }
 
-/* ── Rodapé ── */
-footer {
+th {
+  background: #F1F5F9;
+  color: var(--finace-titles);
+  padding: 12px;
+  font-weight: 700;
+}
+
+td {
+  padding: 12px;
   border-top: 1px solid var(--finace-border);
-  color: var(--finace-muted);
-  font-size: 0.82rem;
 }
 
-/* ── Responsivo: mobile ── */
+/* ── Footer Minimalista ── */
+footer {
+  margin-top: 4rem;
+  padding: 2rem 0;
+  border-top: 1px solid var(--finace-border);
+  text-align: center;
+  background: #FFFFFF;
+}
+
+/* ── Mobile Optimization ── */
 @media (max-width: 640px) {
-  .post-entry .entry-cover img {
-    height: 160px;
-  }
-  h1 { font-size: 1.5rem; }
+  .post-entry { padding: 15px !important; }
+  .post-content { font-size: 1rem; }
 }
