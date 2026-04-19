@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║         BLOG AUTOMATOR v6.0 — FinacePro [GROQ CLOUD]            ║
-║   [FIX v6.0] Anti-429: Groq High Speed + Pexels + Hugo Logic    ║
+║         BLOG AUTOMATOR v6.1 — FinacePro [GROQ CLOUD]            ║
+║   [FIX v6.1] Indentation Fix + Groq 8B + Pexels + Hugo          ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
 import os, re, sys, time, hashlib, logging, json, urllib.request, urllib.parse, urllib.error
@@ -41,8 +41,7 @@ HISTORICO_FILE = Path("historico.txt")
 CACHE_DIR = Path(".ai_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
-# ✅ CONFIGURAÇÃO GROQ (O cérebro mais rápido)
-# Modelo sugerido: llama3-70b-8192 (Excelente para artigos longos e SEO)
+# ✅ CONFIGURAÇÃO GROQ
 GROQ_MODEL = "llama3-8b-8192"
 MAX_POSTS = 1 
 API_DELAY = 15 
@@ -54,7 +53,7 @@ PEXELS_QUERY_MAP = {
     "Finanças": "personal finance investment money",
 }
 PEXELS_FALLBACK = {"url": "https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg", "alt": "Finanças e crédito para empreendedores brasileiros"}
-PEXELS_USER_AGENT = "Mozilla/5.0 (compatible; FinaceProBot/6.0;)"
+PEXELS_USER_AGENT = "Mozilla/5.0 (compatible; FinaceProBot/6.1;)"
 
 KEYWORD_PRIMARIA = {
     "Cartão de Crédito": "cartão de crédito para MEI",
@@ -135,7 +134,7 @@ def gerar_artigo_groq(titulo: str, fonte: str, categoria: str) -> Optional[str]:
 
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     kw = KEYWORD_PRIMARIA.get(categoria, "finanças para MEI")
-    prompt = f"""Você é um jornalista financeiro sénior. Escreva um artigo sobre: "{titulo}" (Fonte: {fonte}).
+    prompt = f"""Você é um jornalista financeiro sénior especializado em MEI. Escreva um artigo sobre: "{titulo}" (Fonte: {fonte}).
 Keyword principal: {kw}. 
 REGRAS: 
 1. Use Markdown. 
@@ -148,11 +147,13 @@ REGRAS:
     cached = _load_cache(prompt)
     if cached: return cached
 
-        headers = {
+    # ✅ CORREÇÃO DE INDENTAÇÃO AQUI
+    headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "User-Agent": "FinacePro/1.0"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
     }
+    
     payload = {
         "model": GROQ_MODEL,
         "messages": [{"role": "user", "content": prompt}],
@@ -202,7 +203,7 @@ cover:
 # MAIN
 # ─────────────────────────────────────────────
 def main():
-    log.info("🚀 FinacePro v6.0 [GROQ MODE]")
+    log.info("🚀 FinacePro v6.1 [GROQ MODE]")
     noticias = buscar_noticias(RSS_FEEDS, KEYWORDS)
     historico = carregar_historico(HISTORICO_FILE)
     novas = [n for n in noticias if _hash(n["link"]) not in historico]
@@ -216,7 +217,7 @@ def main():
         if artigo and salvar_post(artigo, img):
             salvar_historico(HISTORICO_FILE, _hash(n["link"]))
             log.info(f"✅ Sucesso: {n['titulo'][:40]}")
-            break # 1 post por vez
+            break 
 
 if __name__ == "__main__":
     main()
