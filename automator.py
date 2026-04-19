@@ -202,7 +202,7 @@ Conteúdo por Conselho Editorial FinacePro em {data_hoje}. Caráter educativo.
 - "{kw}" aparece 4-6x
 - Apenas dados verificáveis ("conforme Banco Central")
 - Nada antes do # do título
-- 950-1300 palavras
+- 700-950 palavras
 - Tabela com 4 linhas OBRIGATÓRIA"""
 
     # ✅ VERIFICA CACHE ANTES DE CHAMAR API
