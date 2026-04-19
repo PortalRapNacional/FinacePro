@@ -148,9 +148,10 @@ REGRAS:
     cached = _load_cache(prompt)
     if cached: return cached
 
-    headers = {
+        headers = {
         "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": "FinacePro/1.0"
     }
     payload = {
         "model": GROQ_MODEL,
