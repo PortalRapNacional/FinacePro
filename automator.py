@@ -43,7 +43,7 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 # ✅ CONFIGURAÇÃO GROQ (O cérebro mais rápido)
 # Modelo sugerido: llama3-70b-8192 (Excelente para artigos longos e SEO)
-GROQ_MODEL = "llama3-70b-8192"
+GROQ_MODEL = "llama3-8b-8192"
 MAX_POSTS = 1 
 API_DELAY = 15 
 
