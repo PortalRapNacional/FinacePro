@@ -4,7 +4,7 @@ title = "FinacePro | Crédito, MEI e Soluções Financeiras"
 theme = "PaperMod"
 disableKinds = ["taxonomy", "term"]
 
-# ✅ Paginação para versões recentes do Hugo
+# ✅ Configuração de paginação para versões modernas do Hugo
 [pagination]
   pagerSize = 12
 
@@ -14,7 +14,7 @@ disableKinds = ["taxonomy", "term"]
   description = "Guia completo sobre cartões de crédito para MEI, empréstimos e educação financeira."
   author = "Conselho Editorial FinacePro"
   
-  # Estética Premium e AdSense
+  # ✅ Estética Premium e AdSense
   defaultTheme = "light"
   disableThemeToggle = true
   ShowReadingTime = true
@@ -23,21 +23,21 @@ disableKinds = ["taxonomy", "term"]
   ShowCodeCopyButtons = true
   ShowShareButtons = true
   ShowToc = true
-  ShowFullTextContent = false # Estilo portal: mostra apenas o resumo na home
+  ShowFullTextContent = false # Estilo portal: exibe apenas o resumo na página inicial
 
-  # Configuração de Imagens (Capa)
+  # ✅ Configuração de Imagens (Capa)
   [params.cover]
     linkFullImages = true
     responsiveImages = true
     hiddenInList = false 
     hiddenInSingle = false
 
-  # Layout da Home
+  # ✅ Layout da Home
   [params.homeInfoParams]
     Title = "💰 Inteligência Financeira e Crédito para MEI"
     Content = "As melhores análises de cartões, crédito empresarial e dicas para organizar as finanças do seu negócio."
 
-  # Ícones Sociais
+  # ✅ Ícones Sociais
   [[params.socialIcons]]
     name = "email"
     url = "mailto:contato@finacepro.com"
@@ -48,7 +48,7 @@ disableKinds = ["taxonomy", "term"]
   renderFuture = true
   renderExpired = true
 
-# Menu focado em High CPM e Autoridade
+# ✅ Menu focado em High CPM e Autoridade
 [[menu.main]]
   name = "💳 Cartões"
   url = "/posts/"
