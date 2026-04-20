@@ -1,104 +1,72 @@
-/* =============================================================
-   FinacePro — Design Elite v6.0 (Layout Nuclear Reset)
-   Objetivo: Forçar Menu no Topo e Posts em Grade Centralizada
-   ============================================================= */
+/* assets/css/extended/custom.css */
 
-/* 1. RESET ESTRUTURAL (Mata o layout de colunas) */
-html, body {
-    display: block !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background-color: #F8FAFC !important; /* Slate 50 */
+:root {
+  --finace-bg:       #F8FAFC;
+  --finace-top-bg:   #0F172A; /* Slate Profundo */
+  --finace-primary:   #4F46E5; /* Indigo */
+  --finace-titles:    #1E293B;
+  --finace-border:    #E2E8F0;
 }
 
-/* Força o container do PaperMod a ser vertical */
-.main, .profile, .list, .page {
+/* --- RESET PARA VERTICAL --- */
+html, body, .main, .header, .footer {
     display: block !important;
-    max-width: 1100px !important;
-    margin: 0 auto !important;
     float: none !important;
 }
 
-/* 2. HEADER (MENU NO TOPO) */
+body {
+    background-color: var(--finace-bg) !important;
+    margin: 0;
+}
+
+/* --- CABEÇALHO --- */
 .header {
-    display: block !important;
-    background: #0F172A !important; /* Slate Profundo */
-    width: 100% !important;
-    position: relative !important;
-    padding: 10px 0 !important;
-    border-bottom: 3px solid #4F46E5 !important;
+    background: var(--finace-top-bg) !important;
+    border-bottom: 3px solid var(--finace-primary);
 }
 
 .nav {
     display: flex !important;
-    flex-direction: row !important; /* Garante que os itens do menu fiquem na horizontal */
-    justify-content: space-between !important;
-    align-items: center !important;
-    max-width: 1100px !important;
-    margin: 0 auto !important;
-    padding: 0 20px !important;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 10px 20px;
 }
 
-/* Cores do Menu */
-.nav a, .logo a, .menu a, #menu-trigger {
+.nav a, .logo a, .menu a {
     color: #FFFFFF !important;
     font-weight: 700 !important;
     text-decoration: none !important;
 }
 
-/* 3. GRID DE POSTS (MODO PORTAL) */
-@media screen and (min-width: 768px) {
-    /* Alvo: Apenas a área onde os posts são listados */
-    .list:not(.profile) {
-        display: grid !important;
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 30px !important;
-        padding: 40px 0 !important;
-    }
-}
-
-/* 4. CARDS PREMIUM */
+/* --- CARDS SIMPLES E SEGUROS --- */
 .post-entry {
     background: #FFFFFF !important;
-    border: 1px solid #E2E8F0 !important;
-    border-radius: 16px !important;
-    padding: 25px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-    transition: transform 0.3s ease !important;
-    margin-bottom: 0 !important;
-}
-
-.post-entry:hover {
-    transform: translateY(-5px) !important;
-    border-color: #4F46E5 !important;
+    border: 1px solid var(--finace-border) !important;
+    border-radius: 12px !important;
+    margin-bottom: 25px !important;
+    padding: 20px !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
 }
 
 .entry-cover img {
-    border-radius: 12px !important;
-    width: 100% !important;
-    height: 220px !important;
-    object-fit: cover !important;
-}
-
-/* 5. TIPOGRAFIA */
-h1, .post-title a {
-    color: #1E293B !important;
-    font-weight: 800 !important;
-}
-
-/* Botões */
-.entry-footer a, .read-more {
-    background: #4F46E5 !important;
-    color: #FFFFFF !important;
     border-radius: 8px !important;
-    padding: 10px 20px !important;
-    display: inline-block !important;
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+    object-fit: cover;
 }
 
-/* Footer */
-footer {
-    text-align: center;
-    padding: 40px;
-    background: white;
-    border-top: 1px solid #E2E8F0;
+/* --- TIPOGRAFIA --- */
+.post-title a {
+    color: var(--finace-titles) !important;
+    font-weight: 800;
+}
+
+.entry-footer a {
+    background: var(--finace-primary) !important;
+    color: white !important;
+    padding: 5px 15px;
+    border-radius: 5px;
 }
