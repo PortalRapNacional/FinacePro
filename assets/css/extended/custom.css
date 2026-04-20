@@ -5,15 +5,15 @@
 
 :root {
   --finace-bg:       #F8FAFC;
-  --finace-top-bg:   #0F172A; /* Slate Profundo */
-  --finace-primary:   #4F46E5; /* Indigo */
+  --finace-top-bg:   #0F172A; 
+  --finace-primary:   #4F46E5; 
   --finace-text:      #334155;
   --finace-titles:    #1E293B;
   --finace-border:    #E2E8F0;
   --finace-radius:    16px;
 }
 
-/* --- RESET DE ESTRUTURA (CORRIGE O DESALINHAMENTO) --- */
+/* --- RESET DE ESTRUTURA --- */
 html, body {
     display: block !important;
     margin: 0 !important;
@@ -22,7 +22,6 @@ html, body {
     font-family: 'Inter', sans-serif;
 }
 
-/* Container Principal Centralizado */
 .main {
     display: block !important;
     max-width: 1100px;
@@ -31,7 +30,7 @@ html, body {
     float: none !important;
 }
 
-/* --- HEADER (MENU NO TOPO - FIXO) --- */
+/* --- HEADER (MENU NO TOPO) --- */
 .header {
     display: block !important; 
     background: var(--finace-top-bg) !important;
@@ -50,7 +49,6 @@ html, body {
     padding: 10px 20px;
 }
 
-/* Força letras brancas no menu */
 .nav a, .logo a, .menu a, .menu li a, #menu-trigger {
     color: #FFFFFF !important;
     font-weight: 700 !important;
@@ -58,15 +56,11 @@ html, body {
     opacity: 1 !important;
 }
 
-.menu a:hover {
-    color: #A5B4FC !important;
-}
-
 /* --- GRID DE POSTS (MODO PORTAL) --- */
 @media screen and (min-width: 768px) {
     .list:not(.profile) {
         display: grid !important;
-        grid-template-columns: repeat(2, 1fr) !important; /* 2 Colunas */
+        grid-template-columns: repeat(2, 1fr) !important; 
         gap: 30px !important;
         padding-top: 20px;
         float: none !important;
@@ -80,7 +74,7 @@ html, body {
     border-radius: var(--finace-radius) !important;
     padding: 25px !important;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-    transition: transform 0.3s ease, border-color 0.3s ease !important;
+    transition: transform 0.3s ease !important;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -89,7 +83,6 @@ html, body {
 .post-entry:hover {
     transform: translateY(-5px);
     border-color: var(--finace-primary) !important;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
 }
 
 .entry-cover img {
@@ -100,20 +93,7 @@ html, body {
     margin-bottom: 15px;
 }
 
-/* --- TIPOGRAFIA --- */
-h1, h2, h3, .post-title a {
-    color: var(--finace-titles) !important;
-    font-weight: 800 !important;
-    letter-spacing: -0.02em;
-}
-
-.post-content h2 {
-    border-left: 5px solid var(--finace-primary);
-    padding-left: 15px;
-    margin-top: 2rem;
-}
-
-/* --- BOTÕES (CTA) --- */
+/* --- CTAs --- */
 .entry-footer a, .read-more {
     background: var(--finace-primary) !important;
     color: #FFFFFF !important;
@@ -123,11 +103,10 @@ h1, h2, h3, .post-title a {
     font-weight: 600;
 }
 
-/* --- FOOTER --- */
 footer {
     text-align: center;
     padding: 40px;
     background: white;
-    margin-top: 50px;
     border-top: 1px solid var(--finace-border);
+    margin-top: 50px;
 }
