@@ -1,112 +1,104 @@
 /* =============================================================
-   FinacePro — Design Elite v5.5 (Final Ultra-Fix)
-   Status: AdSense Ready | Grid 2 Colunas | Menu Topo
+   FinacePro — Design Elite v6.0 (Layout Nuclear Reset)
+   Objetivo: Forçar Menu no Topo e Posts em Grade Centralizada
    ============================================================= */
 
-:root {
-  --finace-bg:       #F8FAFC;
-  --finace-top-bg:   #0F172A; 
-  --finace-primary:   #4F46E5; 
-  --finace-text:      #334155;
-  --finace-titles:    #1E293B;
-  --finace-border:    #E2E8F0;
-  --finace-radius:    16px;
-}
-
-/* --- RESET DE ESTRUTURA --- */
+/* 1. RESET ESTRUTURAL (Mata o layout de colunas) */
 html, body {
     display: block !important;
     margin: 0 !important;
     padding: 0 !important;
-    background-color: var(--finace-bg) !important;
-    font-family: 'Inter', sans-serif;
+    background-color: #F8FAFC !important; /* Slate 50 */
 }
 
-.main {
+/* Força o container do PaperMod a ser vertical */
+.main, .profile, .list, .page {
     display: block !important;
-    max-width: 1100px;
+    max-width: 1100px !important;
     margin: 0 auto !important;
-    padding: 20px;
     float: none !important;
 }
 
-/* --- HEADER (MENU NO TOPO) --- */
+/* 2. HEADER (MENU NO TOPO) */
 .header {
-    display: block !important; 
-    background: var(--finace-top-bg) !important;
-    border-bottom: 2px solid var(--finace-primary);
+    display: block !important;
+    background: #0F172A !important; /* Slate Profundo */
     width: 100% !important;
-    position: relative;
-    z-index: 999;
+    position: relative !important;
+    padding: 10px 0 !important;
+    border-bottom: 3px solid #4F46E5 !important;
 }
 
 .nav {
     display: flex !important;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 10px 20px;
+    flex-direction: row !important; /* Garante que os itens do menu fiquem na horizontal */
+    justify-content: space-between !important;
+    align-items: center !important;
+    max-width: 1100px !important;
+    margin: 0 auto !important;
+    padding: 0 20px !important;
 }
 
-.nav a, .logo a, .menu a, .menu li a, #menu-trigger {
+/* Cores do Menu */
+.nav a, .logo a, .menu a, #menu-trigger {
     color: #FFFFFF !important;
     font-weight: 700 !important;
     text-decoration: none !important;
-    opacity: 1 !important;
 }
 
-/* --- GRID DE POSTS (MODO PORTAL) --- */
+/* 3. GRID DE POSTS (MODO PORTAL) */
 @media screen and (min-width: 768px) {
+    /* Alvo: Apenas a área onde os posts são listados */
     .list:not(.profile) {
         display: grid !important;
-        grid-template-columns: repeat(2, 1fr) !important; 
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 30px !important;
-        padding-top: 20px;
-        float: none !important;
+        padding: 40px 0 !important;
     }
 }
 
-/* --- CARDS PREMIUM --- */
+/* 4. CARDS PREMIUM */
 .post-entry {
     background: #FFFFFF !important;
-    border: 1px solid var(--finace-border) !important;
-    border-radius: var(--finace-radius) !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 16px !important;
     padding: 25px !important;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
     transition: transform 0.3s ease !important;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+    margin-bottom: 0 !important;
 }
 
 .post-entry:hover {
-    transform: translateY(-5px);
-    border-color: var(--finace-primary) !important;
+    transform: translateY(-5px) !important;
+    border-color: #4F46E5 !important;
 }
 
 .entry-cover img {
-    border-radius: 12px 12px 0 0 !important;
-    width: 100%;
-    height: 220px;
-    object-fit: cover;
-    margin-bottom: 15px;
+    border-radius: 12px !important;
+    width: 100% !important;
+    height: 220px !important;
+    object-fit: cover !important;
 }
 
-/* --- CTAs --- */
+/* 5. TIPOGRAFIA */
+h1, .post-title a {
+    color: #1E293B !important;
+    font-weight: 800 !important;
+}
+
+/* Botões */
 .entry-footer a, .read-more {
-    background: var(--finace-primary) !important;
+    background: #4F46E5 !important;
     color: #FFFFFF !important;
     border-radius: 8px !important;
     padding: 10px 20px !important;
-    display: inline-block;
-    font-weight: 600;
+    display: inline-block !important;
 }
 
+/* Footer */
 footer {
     text-align: center;
     padding: 40px;
     background: white;
-    border-top: 1px solid var(--finace-border);
-    margin-top: 50px;
+    border-top: 1px solid #E2E8F0;
 }
