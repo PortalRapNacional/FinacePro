@@ -2,6 +2,9 @@
    FinacePro — Design Elite Modern (System Design v3.0)
    Status: AdSense Ready & Professional Typography
    ============================================================= */
+body {
+    background-color: red !important;
+}
 
 :root {
   --finace-bg:       #F8FAFC;  /* Slate 50 */
