@@ -1,67 +1,65 @@
 /* =============================================================
-   FinacePro — Design Elite Modern (System Design v3.0)
-   Status: AdSense Ready & Professional Typography
+   FinacePro — Design Elite Modern (System Design v4.0)
+   Status: Produção Final - AdSense & Fintech UX
    ============================================================= */
-body {
-    background-color: red !important;
-}
 
 :root {
   --finace-bg:       #F8FAFC;  /* Slate 50 */
-  --finace-top-bg:   #0F172A;  /* Deep Slate (Fintech Style) */
-  --finace-primary:   #4F46E5;  /* Indigo */
+  --finace-top-bg:   #0F172A;  /* Deep Slate (Autoridade) */
+  --finace-primary:   #4F46E5;  /* Indigo (Confiança) */
   --finace-text:      #334155;  /* Slate 700 */
   --finace-titles:    #1E293B;  /* Slate 800 */
   --finace-border:    #E2E8F0;
-  --finace-card-bg:   #FFFFFF;
   --finace-radius:    16px;
   --finace-font:      'Inter', system-ui, -apple-system, sans-serif;
 }
 
+/* ── Base ── */
 body {
   font-family: var(--finace-font);
-  background-color: var(--finace-bg);
+  background-color: var(--finace-bg) !important;
   color: var(--finace-text);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Header & Navbar (Correção das Letras Brancas) ── */
-.nav {
-  background: var(--finace-top-bg);
-  border-bottom: 2px solid var(--finace-primary);
-  padding: 0.5rem 0;
+/* ── Header & Navbar (Correção Crítica: Letras Brancas) ── */
+.header {
+    background: var(--finace-top-bg) !important;
+    border-bottom: 2px solid var(--finace-primary);
 }
 
-/* Forçar visibilidade do Menu e Logo sobre o fundo escuro */
+/* Força o branco em todos os links e botões do menu */
+.nav a, 
 .logo a, 
 .menu a, 
-.menu-item a,
-#menu-trigger {
-  color: #FFFFFF !important;
-  font-weight: 700 !important;
-  text-decoration: none !important;
-  opacity: 1 !important;
+.menu li a, 
+#menu-trigger,
+.lang-container a {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    opacity: 1 !important;
+    text-decoration: none !important;
 }
 
 .menu a:hover {
-  color: #A5B4FC !important; /* Indigo suave no hover */
+    color: #A5B4FC !important; /* Indigo suave no hover */
 }
 
 /* ── Elite Post Cards (Design Anti-Amador) ── */
 .post-entry {
-  background: var(--finace-card-bg);
+  background: #FFFFFF !important;
   border-radius: var(--finace-radius) !important;
-  border: 1px solid var(--finace-border);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--finace-border) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   padding: 25px !important;
-  margin-bottom: 20px;
+  margin-bottom: 25px !important;
 }
 
 .post-entry:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  border-color: var(--finace-primary);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
+  border-color: var(--finace-primary) !important;
 }
 
 .entry-cover img {
@@ -81,21 +79,23 @@ h1, h2, h3, .post-title a {
   border-left: 5px solid var(--finace-primary);
   padding-left: 15px;
   margin-top: 2.5rem;
+  color: var(--finace-titles);
 }
 
-/* ── CTAs e Botões (Foco em Clique) ── */
-.entry-footer a, .read-more a {
-  background: var(--finace-primary);
-  color: #FFFFFF !important;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  display: inline-block;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+/* ── CTAs e Botões (Foco em Clique AdSense) ── */
+.entry-footer a, .read-more {
+    background: var(--finace-primary) !important;
+    color: #FFFFFF !important;
+    border-radius: 8px !important;
+    padding: 10px 22px !important;
+    font-weight: 600;
+    font-size: 0.85rem;
+    display: inline-block;
+    text-decoration: none !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
 }
 
-/* ── Tabelas Estruturadas AdSense ── */
+/* ── Tabelas Estruturadas (Dashboard Style) ── */
 table {
   width: 100%;
   border-radius: 12px;
@@ -117,13 +117,14 @@ td {
   border-top: 1px solid var(--finace-border);
 }
 
-/* ── Footer ── */
+/* ── Footer Minimalista ── */
 footer {
   margin-top: 4rem;
   padding: 3rem 0;
   background: #FFFFFF;
   border-top: 1px solid var(--finace-border);
   color: #64748B;
+  text-align: center;
 }
 
 /* ── Mobile Optimization ── */
