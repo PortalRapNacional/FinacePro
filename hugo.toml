@@ -10,45 +10,24 @@ disableKinds = ["taxonomy", "term"]
 [params]
   env = "production"
   title = "FinacePro"
-  description = "Guia de autoridade sobre cartões de crédito para MEI, empréstimos empresariais e inteligência financeira."
+  description = "Guia de autoridade sobre cartões de crédito para MEI e finanças."
   author = "Conselho Editorial FinacePro"
   
   defaultTheme = "light"
   disableThemeToggle = true 
   ShowReadingTime = true
   ShowBreadCrumbs = true
-  ShowPostNavLinks = true
   ShowCodeCopyButtons = true
-  ShowShareButtons = true
   ShowFullTextContent = false 
 
-  [params.toc]
-    enable = true
-    open = false 
-    
   [params.cover]
     linkFullImages = true
     responsiveImages = true
     hiddenInList = false 
-    hiddenInSingle = false
-
-  [params.homeInfoParams]
-    Title = "💰 Inteligência em Crédito e Gestão para MEI"
-    Content = "Análises técnicas de cartões, crédito para empresas e estratégias para a saúde financeira do seu negócio."
 
   [params.footer]
     hideCopyright = false
-    content = "FinacePro © 2026 - O seu portal de inteligência financeira. Todos os direitos reservados."
-
-  [[params.socialIcons]]
-    name = "email"
-    url = "mailto:contato@finacepro.com"
-
-[build]
-  publishResources = true
-  renderDrafts = false
-  renderFuture = true
-  renderExpired = false
+    content = "FinacePro © 2026 - Inteligência Financeira."
 
 [[menu.main]]
   name = "💳 Cartões"
@@ -62,11 +41,3 @@ disableKinds = ["taxonomy", "term"]
   name = "📈 Empréstimos"
   url = "/posts/"
   weight = 30
-[[menu.main]]
-  name = "Sobre"
-  url = "/about"
-  weight = 40
-[[menu.main]]
-  name = "Privacidade"
-  url = "/privacy"
-  weight = 50
