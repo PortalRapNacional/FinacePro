@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║         BLOG AUTOMATOR v8.0 — FinacePro [ELITE EDITION]        ║
-║   [FINAL] Random Pexels + Editorial Clean + AdSense Meta        ║
+║         BLOG AUTOMATOR v8.5 — FinacePro [ELITE PRODUCTION]      ║
+║   [FINAL] Random Pexels + Clean Editorial + AdSense Optimized   ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
 import os, re, sys, time, hashlib, logging, json, urllib.request, urllib.parse, urllib.error, random
@@ -46,11 +46,11 @@ API_DELAY = 15
 
 PEXELS_QUERY_MAP = {
     "Cartão de Crédito": "credit card business finance",
-    "MEI": "small business entrepreneur",
-    "Empréstimos": "bank loan money finance",
-    "Finanças": "personal finance investment money",
+    "MEI": "entrepreneur small business",
+    "Empréstimos": "bank loan money",
+    "Finanças": "personal finance wealth",
 }
-PEXELS_FALLBACK = {"url": "https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg", "alt": "Finanças FinacePro"}
+PEXELS_FALLBACK = {"url": "https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg", "alt": "FinacePro Finanças"}
 
 # ─────────────────────────────────────────────
 # UTILITÁRIOS
@@ -72,26 +72,28 @@ def _save_cache(prompt: str, content: str, titulo: str):
         json.dump({"content": content, "titulo": titulo, "ts": time.time()}, file, ensure_ascii=False)
 
 # ─────────────────────────────────────────────
-# MÓDULO PEXELS (CORREÇÃO: RANDOMIZADO)
+# MÓDULO PEXELS (CORREÇÃO: RANDOMIZAÇÃO REAL)
 # ─────────────────────────────────────────────
 def buscar_imagem_pexels(categoria: str) -> dict:
     api_key = os.environ.get("PEXELS_API_KEY", "").strip()
     if not api_key: return PEXELS_FALLBACK
     
-    query = PEXELS_QUERY_MAP.get(categoria, PEXELS_QUERY_MAP["Finanças"])
-    # ✅ Randomiza a página para evitar imagens repetidas
-    rand_page = random.randint(1, 50)
+    query = PEXELS_QUERY_MAP.get(categoria, "business finance")
+    # ✅ Escolhe uma página aleatória para nunca repetir a imagem
+    rand_page = random.randint(1, 80)
     endpoint = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=1&page={rand_page}"
     
     try:
         log.info(f"🖼️ Buscando imagem única no Pexels (Pág {rand_page})...")
-        req = urllib.request.Request(endpoint, headers={"Authorization": api_key, "User-Agent": "FinacePro/1.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        req = urllib.request.Request(endpoint, headers={"Authorization": api_key, "User-Agent": "FinacePro/2.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode())
             if data.get("photos"):
                 return {"url": data["photos"][0]["src"]["large2x"], "alt": data["photos"][0].get("alt", categoria)}
         return PEXELS_FALLBACK
-    except: return PEXELS_FALLBACK
+    except Exception as e:
+        log.error(f"⚠️ Erro Pexels: {e}")
+        return PEXELS_FALLBACK
 
 # ─────────────────────────────────────────────
 # MÓDULO IA (GROQ)
@@ -100,31 +102,29 @@ def gerar_artigo_groq(titulo: str, fonte: str) -> Optional[str]:
     api_key = os.environ.get("GROQ_API_KEY", "").strip()
     if not api_key: return None
 
-    prompt = f"""Você é um analista financeiro sênior. Escreva um artigo de autoridade sobre: "{titulo}".
-    REGRAS DE OURO:
-    1. Comece DIRETO com um título H1 impactante (Não escreva 'Título:').
-    2. Escreva uma introdução cativante sem rótulos.
-    3. Use subtítulos H2 e H3 para organizar os dados.
-    4. Crie uma TABELA DE COMPARAÇÃO em Markdown.
-    5. Mínimo 800 palavras. Estilo: Bloomberg/Exame.
-    6. Proibido rótulos como: 'Meta descrição:', 'Resumo:', 'Introdução:'.
-    7. Foque em SEO para crédito e MEI."""
+    prompt = f"""Escreva um artigo de 800 palavras sobre: "{titulo}".
+    DIRETRIZES:
+    1. Comece DIRETO com o título em H1 (Ex: # Título do Post).
+    2. NUNCA use os termos 'Título:', 'Meta descrição:', 'Introdução:', 'Resumo:'.
+    3. Use subtítulos H2 e H3 e crie uma TABELA comparativa em Markdown.
+    4. Estilo: Jornalismo financeiro de elite (Bloomberg/Exame).
+    5. Foque em SEO para crédito, MEI e finanças."""
 
     cached = _load_cache(prompt)
     if cached: return cached
 
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "model": GROQ_MODEL,
         "messages": [
-            {"role": "system", "content": "Você é o Conselho Editorial do FinacePro. Tom profissional e direto."},
+            {"role": "system", "content": "Você é o Conselho Editorial do portal FinacePro. Seu texto é profissional e livre de marcas de IA."},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.7
+        "temperature": 0.65
     }
 
     try:
-        log.info(f"🧠 Gerando artigo via Groq...")
+        log.info(f"🧠 Gerando conteúdo via Groq...")
         req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=json.dumps(payload).encode("utf-8"), headers=headers)
         with urllib.request.urlopen(req, timeout=60) as resp:
             res = json.loads(resp.read().decode("utf-8"))
@@ -132,10 +132,10 @@ def gerar_artigo_groq(titulo: str, fonte: str) -> Optional[str]:
             _save_cache(prompt, conteudo, titulo)
             return conteudo
     except Exception as e:
-        log.error(f"❌ Falha na IA: {e}"); return None
+        log.error(f"❌ Erro Groq: {e}"); return None
 
 # ─────────────────────────────────────────────
-# SALVAMENTO EDITORIAL (CORREÇÃO: LIMPEZA TOTAL)
+# SALVAMENTO EDITORIAL (LIMPEZA TOTAL)
 # ─────────────────────────────────────────────
 def slugify(t: str) -> str:
     s = t.lower()
@@ -145,26 +145,33 @@ def slugify(t: str) -> str:
 def salvar_post(conteudo, img):
     try:
         linhas = conteudo.splitlines()
-        corpo_final = []
+        corpo_filtrado = []
+        
+        # ✅ Filtro Editorial: Remove rascunhos de IA
         for l in linhas:
-            # ✅ Remove qualquer linha que pareça instrução de IA
-            if any(term in l.lower() for term in ["título:", "meta descrição:", "introdução:", "meta description:", "resumo:", "fonte:"]):
+            if any(term in l.lower() for term in ["título:", "meta descrição:", "introdução:", "meta description:", "resumo:"]):
                 continue
-            corpo_final.append(l)
+            corpo_filtrado.append(l)
         
-        texto_limpo = "\n".join(corpo_final).strip()
-        titulo_h1 = next((l[2:].strip() for l in corpo_final if l.startswith("# ")), "Inovação Financeira")
+        texto_limpo = "\n".join(corpo_filtrado).strip()
         
+        # Captura o H1 real para o título do post
+        titulo_h1 = "Destaque Financeiro"
+        for l in corpo_filtrado:
+            if l.startswith("# "):
+                titulo_h1 = l[2:].strip()
+                break
+
         nome = f"{datetime.now().strftime('%Y-%m-%d')}-{slugify(titulo_h1)}.md"
-        fm = f'---\ntitle: "{titulo_h1}"\ndate: {datetime.now(timezone.utc).isoformat()}\nauthor: "Conselho Editorial FinacePro"\ncover:\n  image: "{img["url"]}"\n---\n\n'
+        fm = f'---\ntitle: "{titulo_h1}"\ndate: {datetime.now(timezone.utc).isoformat()}\nauthor: "Editorial FinacePro"\ncover:\n  image: "{img["url"]}"\n---\n\n'
         
         (CONTENT_DIR / nome).write_text(fm + texto_limpo, encoding="utf-8")
         return True
     except Exception as e:
-        log.error(f"❌ Erro ao salvar post: {e}"); return False
+        log.error(f"❌ Erro salvar_post: {e}"); return False
 
 def main():
-    log.info("🚀 FinacePro v8.0 [ELITE] Iniciado")
+    log.info("🚀 FinacePro v8.5 [PRODUCTION READY]")
     CONTENT_DIR.mkdir(parents=True, exist_ok=True)
     if not HISTORICO_FILE.exists(): HISTORICO_FILE.touch()
     
@@ -172,27 +179,22 @@ def main():
 
     noticias = []
     for url in RSS_FEEDS:
-        try:
-            feed = feedparser.parse(url)
-            for entry in feed.entries:
-                if any(kw in entry.title.lower() for kw in KEYWORDS):
-                    if _hash(entry.link) not in historico:
-                        noticias.append(entry)
-        except: continue
+        feed = feedparser.parse(url)
+        for entry in feed.entries:
+            if any(kw in entry.title.lower() for kw in KEYWORDS):
+                if _hash(entry.link) not in historico:
+                    noticias.append(entry)
 
     if not noticias:
-        log.info("✅ Tudo atualizado."); return
+        log.info("✅ Sem novidades nos feeds."); return
 
-    criados = 0
-    for n in noticias:
-        if criados >= MAX_POSTS: break
+    for n in noticias[:MAX_POSTS]:
         img = buscar_imagem_pexels("Finanças")
         artigo = gerar_artigo_groq(n.title, n.link)
         if artigo and salvar_post(artigo, img):
             with open(HISTORICO_FILE, "a") as f: f.write(_hash(n.link) + "\n")
-            log.info(f"✅ Sucesso: {n.title[:50]}...")
-            criados += 1
-            if criados < MAX_POSTS: time.sleep(API_DELAY)
+            log.info(f"✅ Artigo Publicado: {n.title[:50]}...")
+            break
 
 if __name__ == "__main__":
     main()
