@@ -27,6 +27,14 @@ body {
     background: var(--finace-top-bg) !important;
     border-bottom: 2px solid var(--finace-primary);
 }
+/* Layout em Grade (Grid) para a Home */
+@media screen and (min-width: 768px) {
+    .list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 2 colunas */
+        gap: 20px;
+    }
+}
 
 /* Força o branco em todos os links e botões do menu */
 .nav a, 
