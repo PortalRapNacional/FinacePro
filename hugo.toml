@@ -25,9 +25,7 @@ disableKinds = ["taxonomy", "term"]
   ShowFullTextContent = false # Exibe apenas o resumo (melhor para cliques)
   
   # ... outras configs ...
-  layout = "posts"
   # Ativa o modo grade na home
-  displayFullPostContent = false
   showShareButtons = true
 
   # ✅ Configuração de Sumário (TOC) para SEO
