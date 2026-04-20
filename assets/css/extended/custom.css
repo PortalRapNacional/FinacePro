@@ -1,23 +1,20 @@
 /* =============================================================
-   FinacePro — Design Elite Modern (System Design v2.0)
-   Foco: Autoridade, Credibilidade e AdSense Magnético
+   FinacePro — Design Elite Modern (System Design v3.0)
+   Status: AdSense Ready & Professional Typography
    ============================================================= */
 
-/* ── System Design Variables ── */
 :root {
-  --finace-bg:       #F8FAFC;  /* Off-white suave (Slate 50) */
-  --finace-top-bg:   #0F172A;  /* Deep Slate (Autoridade máxima) */
-  --finace-primary:   #4F46E5;  /* Indigo (Confiança Tecnológica) */
-  --finace-primary-h: #4338CA;
-  --finace-text:      #334155;  /* Slate 700 - Melhor leitura */
-  --finace-titles:    #1E293B;  /* Slate 800 - Peso visual */
+  --finace-bg:       #F8FAFC;  /* Slate 50 */
+  --finace-top-bg:   #0F172A;  /* Deep Slate (Fintech Style) */
+  --finace-primary:   #4F46E5;  /* Indigo */
+  --finace-text:      #334155;  /* Slate 700 */
+  --finace-titles:    #1E293B;  /* Slate 800 */
   --finace-border:    #E2E8F0;
   --finace-card-bg:   #FFFFFF;
-  --finace-radius:    16px;     /* Bordas modernas e amigáveis */
+  --finace-radius:    16px;
   --finace-font:      'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* ── Base & Psychologically Optimized Typography ── */
 body {
   font-family: var(--finace-font);
   background-color: var(--finace-bg);
@@ -25,82 +22,77 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Deep Slate Header (Autoridade de Fintech) ── */
+/* ── Header & Navbar (Correção das Letras Brancas) ── */
 .nav {
   background: var(--finace-top-bg);
-  border-bottom: none;
+  border-bottom: 2px solid var(--finace-primary);
   padding: 0.5rem 0;
 }
 
-.logo a, .menu a {
+/* Forçar visibilidade do Menu e Logo sobre o fundo escuro */
+.logo a, 
+.menu a, 
+.menu-item a,
+#menu-trigger {
   color: #FFFFFF !important;
-  font-weight: 700;
-  letter-spacing: -0.5px;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  opacity: 1 !important;
 }
 
 .menu a:hover {
-  color: var(--finace-primary) !important;
+  color: #A5B4FC !important; /* Indigo suave no hover */
 }
 
-/* ── Elite Post Cards ── */
+/* ── Elite Post Cards (Design Anti-Amador) ── */
 .post-entry {
   background: var(--finace-card-bg);
-  border-radius: var(--finace-radius);
+  border-radius: var(--finace-radius) !important;
   border: 1px solid var(--finace-border);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 20px !important;
+  padding: 25px !important;
+  margin-bottom: 20px;
 }
 
 .post-entry:hover {
-  transform: translateY(-4px);
+  transform: translateY(-5px);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   border-color: var(--finace-primary);
 }
 
 .entry-cover img {
-  border-radius: 12px;
-  margin-bottom: 15px;
+  border-radius: 12px !important;
+  margin-bottom: 20px;
+  object-fit: cover;
 }
 
-/* ── Títulos Magnéticos ── */
+/* ── Tipografia de Autoridade ── */
 h1, h2, h3, .post-title a {
   color: var(--finace-titles) !important;
   font-weight: 800;
-  line-height: 1.3;
-}
-
-/* ── Links & CTA (Botão Indigo) ── */
-a {
-  color: var(--finace-primary);
-  text-decoration: none;
-}
-
-.entry-footer a, .read-more a {
-  background: var(--finace-primary);
-  color: #FFFFFF !important;
-  border-radius: 8px;
-  padding: 8px 18px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
-}
-
-/* ── Conteúdo do Artigo (Foco em AdSense) ── */
-.post-content {
-  font-size: 1.125rem;
-  line-height: 1.8;
-  color: #334155;
+  letter-spacing: -0.02em;
 }
 
 .post-content h2 {
-  color: var(--finace-titles);
   border-left: 5px solid var(--finace-primary);
   padding-left: 15px;
   margin-top: 2.5rem;
 }
 
-/* Tabelas Premium (Gera alto valor pro Google) */
+/* ── CTAs e Botões (Foco em Clique) ── */
+.entry-footer a, .read-more a {
+  background: var(--finace-primary);
+  color: #FFFFFF !important;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-block;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+/* ── Tabelas Estruturadas AdSense ── */
 table {
   width: 100%;
   border-radius: 12px;
@@ -113,8 +105,8 @@ table {
 th {
   background: #F1F5F9;
   color: var(--finace-titles);
-  padding: 12px;
-  font-weight: 700;
+  padding: 14px;
+  text-align: left;
 }
 
 td {
@@ -122,17 +114,18 @@ td {
   border-top: 1px solid var(--finace-border);
 }
 
-/* ── Footer Minimalista ── */
+/* ── Footer ── */
 footer {
   margin-top: 4rem;
-  padding: 2rem 0;
-  border-top: 1px solid var(--finace-border);
-  text-align: center;
+  padding: 3rem 0;
   background: #FFFFFF;
+  border-top: 1px solid var(--finace-border);
+  color: #64748B;
 }
 
 /* ── Mobile Optimization ── */
 @media (max-width: 640px) {
+  .nav { padding: 0.2rem 0; }
   .post-entry { padding: 15px !important; }
   .post-content { font-size: 1rem; }
 }
