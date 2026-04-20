@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║         BLOG AUTOMATOR v8.5 — FinacePro [ELITE PRODUCTION]      ║
-║   [FINAL] Random Pexels + Clean Editorial + AdSense Optimized   ║
+║         BLOG AUTOMATOR v9.0 — FinacePro [ELITE PRODUCTION]      ║
+║   [FINAL] Auto-Categorização + Random Pexels + Editorial Clean  ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
 import os, re, sys, time, hashlib, logging, json, urllib.request, urllib.parse, urllib.error, random
@@ -71,15 +71,19 @@ def _save_cache(prompt: str, content: str, titulo: str):
     with open(f, "w", encoding="utf-8") as file:
         json.dump({"content": content, "titulo": titulo, "ts": time.time()}, file, ensure_ascii=False)
 
+def slugify(t: str) -> str:
+    s = t.lower()
+    for a,b in {"á":"a","é":"e","í":"i","ó":"o","ú":"u","ã":"a","ç":"c"}.items(): s = s.replace(a,b)
+    return re.sub(r"[\s_]+", "-", re.sub(r"[^a-z0-9\s-]", "", s)).strip("-")
+
 # ─────────────────────────────────────────────
-# MÓDULO PEXELS (CORREÇÃO: RANDOMIZAÇÃO REAL)
+# MÓDULO PEXELS (RANDOMIZADO)
 # ─────────────────────────────────────────────
 def buscar_imagem_pexels(categoria: str) -> dict:
     api_key = os.environ.get("PEXELS_API_KEY", "").strip()
     if not api_key: return PEXELS_FALLBACK
     
     query = PEXELS_QUERY_MAP.get(categoria, "business finance")
-    # ✅ Escolhe uma página aleatória para nunca repetir a imagem
     rand_page = random.randint(1, 80)
     endpoint = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=1&page={rand_page}"
     
@@ -91,9 +95,7 @@ def buscar_imagem_pexels(categoria: str) -> dict:
             if data.get("photos"):
                 return {"url": data["photos"][0]["src"]["large2x"], "alt": data["photos"][0].get("alt", categoria)}
         return PEXELS_FALLBACK
-    except Exception as e:
-        log.error(f"⚠️ Erro Pexels: {e}")
-        return PEXELS_FALLBACK
+    except: return PEXELS_FALLBACK
 
 # ─────────────────────────────────────────────
 # MÓDULO IA (GROQ)
@@ -105,10 +107,9 @@ def gerar_artigo_groq(titulo: str, fonte: str) -> Optional[str]:
     prompt = f"""Escreva um artigo de 800 palavras sobre: "{titulo}".
     DIRETRIZES:
     1. Comece DIRETO com o título em H1 (Ex: # Título do Post).
-    2. NUNCA use os termos 'Título:', 'Meta descrição:', 'Introdução:', 'Resumo:'.
+    2. NUNCA use 'Título:', 'Meta descrição:', 'Introdução:'.
     3. Use subtítulos H2 e H3 e crie uma TABELA comparativa em Markdown.
-    4. Estilo: Jornalismo financeiro de elite (Bloomberg/Exame).
-    5. Foque em SEO para crédito, MEI e finanças."""
+    4. Estilo: Jornalismo de Elite (Bloomberg/Exame)."""
 
     cached = _load_cache(prompt)
     if cached: return cached
@@ -117,7 +118,7 @@ def gerar_artigo_groq(titulo: str, fonte: str) -> Optional[str]:
     payload = {
         "model": GROQ_MODEL,
         "messages": [
-            {"role": "system", "content": "Você é o Conselho Editorial do portal FinacePro. Seu texto é profissional e livre de marcas de IA."},
+            {"role": "system", "content": "Você é o Conselho Editorial do FinacePro. Seu texto é profissional e focado em SEO Financeiro."},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.65
@@ -135,43 +136,51 @@ def gerar_artigo_groq(titulo: str, fonte: str) -> Optional[str]:
         log.error(f"❌ Erro Groq: {e}"); return None
 
 # ─────────────────────────────────────────────
-# SALVAMENTO EDITORIAL (LIMPEZA TOTAL)
+# SALVAMENTO EDITORIAL (AUTO-CATEGORIA)
 # ─────────────────────────────────────────────
-def slugify(t: str) -> str:
-    s = t.lower()
-    for a,b in {"á":"a","é":"e","í":"i","ó":"o","ú":"u","ã":"a","ç":"c"}.items(): s = s.replace(a,b)
-    return re.sub(r"[\s_]+", "-", re.sub(r"[^a-z0-9\s-]", "", s)).strip("-")
-
 def salvar_post(conteudo, img):
     try:
         linhas = conteudo.splitlines()
         corpo_filtrado = []
-        
-        # ✅ Filtro Editorial: Remove rascunhos de IA
         for l in linhas:
-            if any(term in l.lower() for term in ["título:", "meta descrição:", "introdução:", "meta description:", "resumo:"]):
+            if any(term in l.lower() for term in ["título:", "meta descrição:", "introdução:", "resumo:"]):
                 continue
             corpo_filtrado.append(l)
         
         texto_limpo = "\n".join(corpo_filtrado).strip()
         
-        # Captura o H1 real para o título do post
-        titulo_h1 = "Destaque Financeiro"
-        for l in corpo_filtrado:
-            if l.startswith("# "):
-                titulo_h1 = l[2:].strip()
-                break
+        # ✅ Lógica de Categorização Automática
+        categoria = "Finanças"
+        texto_para_analise = texto_limpo.lower()
+        if any(x in texto_para_analise for x in ["cartão", "cartao", "anuidade", "limite"]):
+            categoria = "Cartões"
+        elif any(x in texto_para_analise for x in ["mei", "microempreendedor", "pj", "empresa"]):
+            categoria = "MEI"
+        elif any(x in texto_para_analise for x in ["empréstimo", "financiamento", "taxa", "juros"]):
+            categoria = "Empréstimos"
 
+        titulo_h1 = next((l[2:].strip() for l in corpo_filtrado if l.startswith("# ")), "Destaque Financeiro")
         nome = f"{datetime.now().strftime('%Y-%m-%d')}-{slugify(titulo_h1)}.md"
-        fm = f'---\ntitle: "{titulo_h1}"\ndate: {datetime.now(timezone.utc).isoformat()}\nauthor: "Editorial FinacePro"\ncover:\n  image: "{img["url"]}"\n---\n\n'
         
+        # Frontmatter com Categorias e Tags automáticas
+        fm = f'''---
+title: "{titulo_h1}"
+date: {datetime.now(timezone.utc).isoformat()}
+categories: ["{categoria}"]
+tags: ["{categoria}", "FinacePro", "Crédito"]
+author: "Editorial FinacePro"
+cover:
+  image: "{img["url"]}"
+---
+
+'''
         (CONTENT_DIR / nome).write_text(fm + texto_limpo, encoding="utf-8")
         return True
     except Exception as e:
         log.error(f"❌ Erro salvar_post: {e}"); return False
 
 def main():
-    log.info("🚀 FinacePro v8.5 [PRODUCTION READY]")
+    log.info("🚀 FinacePro v9.0 [ELITE] Iniciado")
     CONTENT_DIR.mkdir(parents=True, exist_ok=True)
     if not HISTORICO_FILE.exists(): HISTORICO_FILE.touch()
     
@@ -179,21 +188,29 @@ def main():
 
     noticias = []
     for url in RSS_FEEDS:
-        feed = feedparser.parse(url)
-        for entry in feed.entries:
-            if any(kw in entry.title.lower() for kw in KEYWORDS):
-                if _hash(entry.link) not in historico:
-                    noticias.append(entry)
+        try:
+            feed = feedparser.parse(url)
+            for entry in feed.entries:
+                if any(kw in entry.title.lower() for kw in KEYWORDS):
+                    if _hash(entry.link) not in historico:
+                        noticias.append(entry)
+        except: continue
 
     if not noticias:
-        log.info("✅ Sem novidades nos feeds."); return
+        log.info("✅ Tudo atualizado."); return
 
     for n in noticias[:MAX_POSTS]:
-        img = buscar_imagem_pexels("Finanças")
+        # Define busca de imagem baseada na keyword encontrada
+        cat_busca = "Finanças"
+        if "cartão" in n.title.lower(): cat_busca = "Cartão de Crédito"
+        elif "mei" in n.title.lower(): cat_busca = "MEI"
+        elif "empréstimo" in n.title.lower(): cat_busca = "Empréstimos"
+
+        img = buscar_imagem_pexels(cat_busca)
         artigo = gerar_artigo_groq(n.title, n.link)
         if artigo and salvar_post(artigo, img):
             with open(HISTORICO_FILE, "a") as f: f.write(_hash(n.link) + "\n")
-            log.info(f"✅ Artigo Publicado: {n.title[:50]}...")
+            log.info(f"✅ Artigo Publicado na categoria {cat_busca}!")
             break
 
 if __name__ == "__main__":
